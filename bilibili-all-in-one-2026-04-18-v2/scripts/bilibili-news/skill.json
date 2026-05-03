@@ -1,0 +1,27 @@
+{
+    "name": "bilibili-news",
+    "version": "1.0.0",
+    "description": "Bilibili AI早报自动生成器 - 自动获取UP主最新视频并生成Obsidian笔记",
+    "author": "OpenClaw",
+    "tags": [
+        "bilibili",
+        "video",
+        "transcription",
+        "obsidian",
+        "automation"
+    ],
+    "requires": {
+        "bins": [
+            "python3"
+        ],
+        "optionalBins": [
+            "ffmpeg",
+            "yt-dlp"
+        ]
+    },
+    "platforms": [
+        "windows",
+        "linux",
+        "macos"
+    ]
+}

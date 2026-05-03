@@ -1,0 +1,32 @@
+{
+    "name": "bilibili-opencli",
+    "version": "1.0.0",
+    "description": "Bilibili OpenCLI 工作流 - 通过 OpenCLI 搜索/下载视频 + Whisper/FunASR 转录 + 生成 Obsidian 笔记",
+    "author": "SnowLove0303 / OpenClaw",
+    "tags": [
+        "bilibili",
+        "video",
+        "opencli",
+        "transcription",
+        "whisper",
+        "funasr",
+        "obsidian",
+        "automation"
+    ],
+    "requires": {
+        "bins": [
+            "python3"
+        ],
+        "optionalBins": [
+            "opencli",
+            "yt-dlp",
+            "ffmpeg"
+        ]
+    },
+    "entry": "scripts/run.py",
+    "platforms": [
+        "windows",
+        "linux",
+        "macos"
+    ]
+}
