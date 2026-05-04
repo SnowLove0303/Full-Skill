@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """Bilibili OpenCLI workflow entrypoint."""
 import argparse
+import gc
 import os
 import sys
 from pathlib import Path
@@ -9,7 +10,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from search import find_video, get_up_videos, search
 from download import download_batch
-from transcribe import transcribe_batch
+from transcribe import release_models, transcribe_batch
 from formatter import generate_daily_summary, generate_note
 
 DEFAULT_TEMP = os.environ.get("BILIBILI_OUTPUT_DIR", str(Path.home() / "bilibili-ai-news"))
@@ -43,6 +44,7 @@ def parse_args():
     behavior.add_argument("--skip-transcribe", action="store_true", help="Skip transcription.")
     behavior.add_argument("--parallel", type=int, default=3, help="Download/transcription parallelism.")
     behavior.add_argument("--engine", type=str, default="whisper", choices=["whisper", "funasr", "auto"], help="ASR engine.")
+    behavior.add_argument("--keep-cache", action="store_true", help="Keep downloaded media/transcripts after notes are generated.")
 
     return parser.parse_args()
 
@@ -57,6 +59,44 @@ def _print_video_list(videos: list[dict]) -> None:
         score = video.get("match_score")
         score_suffix = f" score:{score}" if score is not None else ""
         print(f"  {i}. [{date}] {author} - {title[:80]} ({video.get('bvid', '')}, plays:{plays}{score_suffix})")
+
+
+def _cleanup_processing_cache(output_dir: str, bvids: list[str]) -> None:
+    output_path = Path(output_dir)
+    if not output_path.exists():
+        return
+
+    suffixes = {".m4a", ".mp4", ".jpg", ".png", ".webp"}
+    deleted = 0
+    for bvid in bvids:
+        candidates = [
+            output_path / f"{bvid}_transcript.txt",
+            output_path / f"transcript_{bvid}.txt",
+        ]
+        candidates.extend(path for path in output_path.glob(f"{bvid}*") if path.suffix.lower() in suffixes)
+        for path in candidates:
+            try:
+                if path.exists() and path.is_file():
+                    path.unlink()
+                    deleted += 1
+            except OSError as exc:
+                print(f"[Cleanup warn] could not delete {path}: {exc}")
+
+    tmp_dir = output_path / ".tmp"
+    try:
+        if tmp_dir.exists():
+            for path in sorted(tmp_dir.rglob("*"), reverse=True):
+                if path.is_file():
+                    path.unlink()
+                elif path.is_dir():
+                    path.rmdir()
+            tmp_dir.rmdir()
+    except OSError as exc:
+        print(f"[Cleanup warn] could not delete temp dir {tmp_dir}: {exc}")
+
+    release_models()
+    gc.collect()
+    print(f"[Cleanup] deleted {deleted} processing cache file(s) and released ASR memory.")
 
 
 def main():
@@ -147,6 +187,13 @@ def main():
         summary_path = generate_daily_summary(transcribed, temp_dir=args.output, vault_path=args.vault)
         if summary_path:
             print(f"  [OK] summary: {Path(summary_path).name}")
+
+    if args.keep_cache:
+        release_models()
+        gc.collect()
+        print("[Cleanup] --keep-cache set; kept media/transcripts and released ASR memory.")
+    else:
+        _cleanup_processing_cache(args.output, [video["bvid"] for video in transcribed if video.get("bvid")])
 
     print("\n" + "=" * 60)
     print(f"Done. Processed {len(transcribed)} video(s).")

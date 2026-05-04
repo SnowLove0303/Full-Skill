@@ -91,6 +91,7 @@ $Run = "$Skill\scripts\bilibili-opencli\scripts\run.py"
 | `--title <text>` | 限定标题片段。 |
 | `--must <term>` | 要求标题/作者/BV/日期中必须包含该词，可重复。 |
 | `--strict-find` | 找不到匹配视频时返回非零退出码，适合自动化。 |
+| `--keep-cache` | 写完笔记后保留音频、视频和转录缓存；默认会清理过程缓存并释放 ASR 模型内存。 |
 
 ---
 

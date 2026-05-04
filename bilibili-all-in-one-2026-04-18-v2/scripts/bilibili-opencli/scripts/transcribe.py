@@ -4,6 +4,7 @@ import sys
 import json
 import subprocess
 import os
+import gc
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -175,3 +176,18 @@ def transcribe_batch(bvids: list[str], output_dir: str = DEFAULT_OUTPUT,
         for fut in as_completed(futures):
             results.append(fut.result())
         return results
+
+
+def release_models() -> None:
+    """Release ASR model singletons and ask Python to return memory promptly."""
+    global _wmodel, _funasr_model
+    _wmodel = None
+    _funasr_model = None
+    gc.collect()
+    try:
+        import torch
+
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+    except Exception:
+        pass
