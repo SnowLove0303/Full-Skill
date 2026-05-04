@@ -23,6 +23,42 @@ links:
 
 ---
 
+## 快速安装和验证
+
+优先使用打包脚本，默认把依赖、工具、缓存和下载目录分别放到 `E:\MorenAnzhuangLujing\Huangjingdajian` 下的独立文件夹：
+
+```powershell
+# 在 skill 根目录运行
+.\scripts\setup.ps1 -RunSmokeTest
+
+# 只检查环境
+.\scripts\check_env.ps1
+
+# 只跑 smoke test
+.\scripts\smoke_test.ps1
+```
+
+安装脚本会创建：
+
+- Python venv: `E:\MorenAnzhuangLujing\Huangjingdajian\python-venvs\bilibili-all-in-one`
+- pip cache: `E:\MorenAnzhuangLujing\Huangjingdajian\tool-caches\pip\bilibili-all-in-one`
+- Hugging Face / Whisper cache: `E:\MorenAnzhuangLujing\Huangjingdajian\tool-caches\huggingface\bilibili-all-in-one`
+- OpenCLI: `E:\MorenAnzhuangLujing\Huangjingdajian\node-tools\opencli`
+- Bilibili output: `E:\MorenAnzhuangLujing\Huangjingdajian\downloads\bilibili`
+- Local env file: `.env.generated.ps1`
+
+可选参数：
+
+| 参数 | 作用 |
+|------|------|
+| `-InstallRoot <path>` | 更换工具安装根目录。 |
+| `-SkipPythonDeps` | 不安装 Python venv 和 pip 依赖。 |
+| `-SkipOpencli` | 不安装 OpenCLI。 |
+| `-PersistUserEnv` | 把关键环境变量写入 Windows 用户环境变量。 |
+| `-RunSmokeTest` | 安装后直接运行 smoke test。 |
+
+---
+
 ## 目录结构
 
 ```
@@ -72,9 +108,11 @@ bilibili-all-in-one/
 |------|------|
 | Python | `python3` 3.10+ |
 | opencli | 可选。设置 `OPENCLI_CMD` 或放入 `PATH`；不可用时会使用公开 API 兜底搜索/列 UP 投稿。 |
+| opencli 禁用开关 | 设置 `BILIBILI_DISABLE_OPENCLI=1` 时跳过 opencli，直接走公开 API。 |
 | yt-dlp | `pip install yt-dlp`，用于下载音视频。 |
 | ffmpeg | 放入 `PATH`，或按本机工具目录配置。 |
 | Whisper | 可通过 `WHISPER_MODEL_SMALL` / `WHISPER_MODEL_MEDIUM` 指向本地 faster-whisper 模型。 |
+| Whisper 自动模型 | 没有本地模型时使用 `WHISPER_MODEL_NAME`，默认 `tiny`，缓存到 `WHISPER_DOWNLOAD_ROOT`。 |
 | FunASR | 可通过 `FUNASR_VENV` 指向本地虚拟环境。 |
 | 临时目录 | 可通过 `BILIBILI_OUTPUT_DIR` 覆盖；默认 `~/bilibili-ai-news`。 |
 | Obsidian Vault | 可通过 `BILIBILI_VAULT_DIR` 覆盖；默认 `~/Documents/Obsidian Vault/实时快报`。 |
@@ -86,6 +124,7 @@ bilibili-all-in-one/
 - 当 `opencli` 不存在或不返回 JSON 时，搜索会自动走 Bilibili 公开搜索接口兜底。
 - `--uid` UP 主视频列表补充 WBI 签名公开接口兜底；若 Bilibili 风控拦截，建议配置 `opencli`。
 - 输出目录、Vault、Whisper/FunASR 路径均可用环境变量覆盖。
+- `setup.ps1` 提供一键安装 Python 依赖、OpenCLI、缓存目录和 smoke test。
 - Windows PowerShell 传中文搜索词前可先执行 `chcp 65001`；也可用 UID/BV 避免命令行编码问题。
 
 ---

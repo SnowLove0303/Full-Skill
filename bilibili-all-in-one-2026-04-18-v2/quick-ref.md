@@ -2,6 +2,19 @@
 
 ## 常用命令
 
+### 一键安装/检查
+
+```powershell
+# 默认安装到 E:\MorenAnzhuangLujing\Huangjingdajian 下的独立目录
+.\scripts\setup.ps1 -RunSmokeTest
+
+# 只检查环境
+.\scripts\check_env.ps1
+
+# 只跑 smoke test
+.\scripts\smoke_test.ps1
+```
+
 在 skill 根目录外执行时，使用完整脚本路径：
 
 ```powershell
@@ -22,7 +35,11 @@ python .\bilibili-all-in-one-2026-04-18-v2\scripts\bilibili-opencli\scripts\run.
 | 变量 | 用途 |
 |------|------|
 | `OPENCLI_CMD` | 指定 `opencli.cmd` 路径；未设置时自动从 `PATH` 查找。 |
+| `BILIBILI_DISABLE_OPENCLI` | 设置为 `1` 时跳过 opencli，直接使用公开 API 兜底。 |
 | `ASR_ENGINE` | 转录引擎选择，可按本机环境设为 `funasr` 等。 |
+| `BILIBILI_OUTPUT_DIR` | 下载和转录输出目录。 |
+| `WHISPER_DOWNLOAD_ROOT` | faster-whisper 模型下载缓存目录。 |
+| `WHISPER_MODEL_NAME` | 没有本地模型时自动使用的模型名，默认 `tiny`。 |
 
 ## 参数速查
 

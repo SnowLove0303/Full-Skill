@@ -10,6 +10,8 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 # Whisper 本地模型路径（video-news-workflow 同款）
 WHISPER_MODEL_SMALL = os.environ.get("WHISPER_MODEL_SMALL", r"F:\AI\whisper_models\faster-whisper-small")
 WHISPER_MODEL_MEDIUM = os.environ.get("WHISPER_MODEL_MEDIUM", r"F:\AI\whisper_models\faster-whisper-medium")
+WHISPER_MODEL_NAME = os.environ.get("WHISPER_MODEL_NAME", "tiny")
+WHISPER_DOWNLOAD_ROOT = os.environ.get("WHISPER_DOWNLOAD_ROOT")
 FUNASR_VENV = os.environ.get("FUNASR_VENV", r"F:\skill\funasr-skill\.venv")
 DEFAULT_OUTPUT = os.environ.get("BILIBILI_OUTPUT_DIR", str(Path.home() / "bilibili-ai-news"))
 
@@ -18,12 +20,12 @@ _funasr_model = None
 
 
 def find_best_whisper_model():
-    """选择最好的可用本地模型"""
+    """选择最好的可用本地模型；没有本地模型时使用可下载的模型名。"""
     if Path(WHISPER_MODEL_MEDIUM).exists():
         return WHISPER_MODEL_MEDIUM
     if Path(WHISPER_MODEL_SMALL).exists():
         return WHISPER_MODEL_SMALL
-    return None
+    return WHISPER_MODEL_NAME
 
 
 def get_whisper_model():
@@ -32,10 +34,11 @@ def get_whisper_model():
     if _wmodel is not None:
         return _wmodel
     model_path = find_best_whisper_model()
-    if model_path is None:
-        raise RuntimeError(f"未找到 Whisper 模型，SMALL={WHISPER_MODEL_SMALL} MEDIUM={WHISPER_MODEL_MEDIUM}")
     from faster_whisper import WhisperModel
-    _wmodel = WhisperModel(model_path, device="cpu", compute_type="int8")
+    kwargs = {"device": "cpu", "compute_type": "int8"}
+    if WHISPER_DOWNLOAD_ROOT:
+        kwargs["download_root"] = WHISPER_DOWNLOAD_ROOT
+    _wmodel = WhisperModel(model_path, **kwargs)
     return _wmodel
 
 

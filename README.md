@@ -23,6 +23,7 @@ bilibili-all-in-one-2026-04-18-v2/
 Quick smoke test:
 
 ```powershell
+.\bilibili-all-in-one-2026-04-18-v2\scripts\setup.ps1 -RunSmokeTest
 python .\bilibili-all-in-one-2026-04-18-v2\scripts\bilibili-opencli\scripts\run.py --search "橘鸦Juya" --limit 3 --dry-run
 ```
 

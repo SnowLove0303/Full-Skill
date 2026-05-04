@@ -20,6 +20,8 @@ WBI_MIXIN_KEY_ENC_TAB = [
 
 def resolve_opencli_cmd() -> str | None:
     """Resolve opencli without depending on a hard-coded user profile."""
+    if os.environ.get("BILIBILI_DISABLE_OPENCLI") in ("1", "true", "TRUE", "yes", "YES"):
+        return None
     return (
         os.environ.get("OPENCLI_CMD")
         or shutil.which("opencli")
@@ -54,7 +56,7 @@ def search_videos(query: str, limit=20, page=1) -> list[dict]:
         "--format", "json"
     ]
     data = run(args)
-    if isinstance(data, list):
+    if isinstance(data, list) and data:
         return data
     return _search_videos_public_api(query, limit=limit, page=page)
 
@@ -68,7 +70,7 @@ def get_user_videos(uid: str, limit=20, page=1, order="pubdate") -> list[dict]:
         "--format", "json"
     ]
     data = run(args)
-    if isinstance(data, list):
+    if isinstance(data, list) and data:
         return data
     return _get_user_videos_public_api(uid, limit=limit, page=page, order=order)
 
@@ -105,9 +107,41 @@ def _format_pubdate(ts) -> str:
     except Exception:
         return ""
 
+def _clean_html(value: str) -> str:
+    return re.sub(r"<[^>]+>", "", value or "")
+
 def _search_videos_public_api(query: str, limit=20, page=1) -> list[dict]:
     """Fallback for environments where opencli returns no JSON results."""
     encoded = urllib.parse.quote(query)
+    direct_url = (
+        "https://api.bilibili.com/x/web-interface/search/type"
+        f"?search_type=video&keyword={encoded}&page={page}"
+    )
+    try:
+        direct_data = _get_json(direct_url, "https://search.bilibili.com/")
+    except Exception:
+        direct_data = {}
+
+    videos = []
+    for rank, item in enumerate((direct_data.get("data") or {}).get("result") or [], 1):
+        bvid = item.get("bvid") or extract_bvid(item.get("arcurl", ""))
+        if not bvid or not str(bvid).startswith("BV"):
+            continue
+        videos.append({
+            "rank": rank,
+            "bvid": bvid,
+            "title": _clean_html(item.get("title", "")),
+            "author": item.get("author", ""),
+            "plays": item.get("play", 0),
+            "date": _format_pubdate(item.get("pubdate")),
+            "url": f"https://www.bilibili.com/video/{bvid}/",
+            "source": "public_api",
+        })
+        if len(videos) >= limit:
+            return videos
+    if videos:
+        return videos
+
     url = (
         "https://api.bilibili.com/x/web-interface/search/type"
         f"?search_type=bili_user&keyword={encoded}&page={page}"
@@ -127,7 +161,7 @@ def _search_videos_public_api(query: str, limit=20, page=1) -> list[dict]:
             videos.append({
                 "rank": rank,
                 "bvid": bvid,
-                "title": item.get("title", ""),
+                "title": _clean_html(item.get("title", "")),
                 "author": author,
                 "plays": item.get("play", 0),
                 "date": _format_pubdate(item.get("pubdate")),
