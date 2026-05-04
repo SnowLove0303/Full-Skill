@@ -1,127 +1,172 @@
 # -*- coding: utf-8 -*-
-"""下载模块：批量下载 + 断点续传 + 并行"""
-import sys
-import json
-import time
-import subprocess
-import os
-from pathlib import Path
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from bilibili_utils import download_video, extract_bvid
+"""Download Bilibili audio/video for transcription."""
 
-def _p(s: str):
-    """安全打印（处理 emoji 等非 GBK 字符）"""
-    try:
-        print(s)
-    except UnicodeEncodeError:
-        # 替换所有无法编码的字符为 ?
-        print(s.encode('gbk', errors='replace').decode('gbk'))
+from __future__ import annotations
+
+import json
+import os
+import subprocess
+import sys
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from pathlib import Path
+
+from bilibili_utils import download_video
+
 
 DEFAULT_OUTPUT = os.environ.get("BILIBILI_OUTPUT_DIR", str(Path.home() / "bilibili-ai-news"))
 
+
+def _p(message: str) -> None:
+    try:
+        print(message)
+    except UnicodeEncodeError:
+        print(message.encode("gbk", errors="replace").decode("gbk"))
+
+
+def _scan_downloaded_files(bvid: str, output_dir: Path) -> dict[str, str]:
+    files: dict[str, str] = {}
+    if not output_dir.exists():
+        return files
+    for item in output_dir.iterdir():
+        if not item.stem.startswith(bvid):
+            continue
+        suffix = item.suffix.lower()
+        if suffix in (".mp4", ".m4a", ".jpg", ".png", ".webp"):
+            files[suffix] = str(item)
+    return files
+
+
 def get_downloaded_bvids(output_dir: Path) -> set[str]:
-    """扫描已下载的 BV 号（通过 .m4a 文件）"""
-    bvids = set()
+    bvids: set[str] = set()
     if not output_dir.exists():
         return bvids
-    for f in output_dir.iterdir():
-        if f.suffix == '.m4a' and f.stem.startswith('BV'):
-            # 文件名格式: BV11jDnBfErS_标题.f30280.m4a
-            parts = f.stem.split('_')
-            if parts:
-                bvids.add(parts[0])
+    for item in output_dir.iterdir():
+        if item.suffix.lower() in (".m4a", ".mp4") and item.stem.startswith("BV"):
+            bvids.add(item.stem.split("_", 1)[0])
     return bvids
 
-def download_single(bvid: str, title: str, output_dir: Path, quality="best") -> dict:
-    """下载单个视频，返回结果"""
-    result = {
-        'bvid': bvid,
-        'title': title,
-        'status': 'skipped',
-        'files': {}
+
+def _download_with_ytdlp(bvid: str, output_dir: Path) -> dict:
+    url = f"https://www.bilibili.com/video/{bvid}/"
+    output_template = str(output_dir / f"{bvid}_%(title).80s.%(ext)s")
+    cmd = [
+        sys.executable,
+        "-m",
+        "yt_dlp",
+        "-f",
+        "ba/bestaudio/best",
+        "--no-playlist",
+        "-o",
+        output_template,
+        url,
+    ]
+    env = os.environ.copy()
+    env.setdefault("TEMP", str(output_dir / ".tmp"))
+    env.setdefault("TMP", env["TEMP"])
+    Path(env["TEMP"]).mkdir(parents=True, exist_ok=True)
+
+    proc = subprocess.run(
+        cmd,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        env=env,
+        timeout=600,
+    )
+    files = _scan_downloaded_files(bvid, output_dir)
+    if proc.returncode == 0 and files:
+        return {"status": "success", "source": "yt-dlp", "files": files}
+    return {
+        "status": "failed",
+        "source": "yt-dlp",
+        "files": files,
+        "error": (proc.stderr or proc.stdout or "").strip()[-1000:],
+        "returncode": proc.returncode,
     }
-    
-    # 检查是否已下载
-    m4a_files = list(output_dir.glob(f"{bvid}*.m4a"))
-    mp4_files = list(output_dir.glob(f"{bvid}*.mp4"))
-    if m4a_files or mp4_files:
-        _p(f"[跳过] {bvid} - 已下载")
-        result['status'] = 'skipped'
-        if m4a_files:
-            result['files']['.m4a'] = str(m4a_files[0])
+
+
+def download_single(bvid: str, title: str, output_dir: Path, quality: str = "best") -> dict:
+    result = {"bvid": bvid, "title": title, "status": "skipped", "files": {}}
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    existing = _scan_downloaded_files(bvid, output_dir)
+    if existing:
+        _p(f"[skip] {bvid} already downloaded")
+        result["status"] = "skipped"
+        result["files"] = existing
         return result
-    
-    # 实际下载
-    _p(f"[下载] {bvid}...")
+
+    _p(f"[download] {bvid}")
     try:
         data = download_video(bvid, str(output_dir), quality=quality)
-        # download_video 返回 [{...}] (列表) 或 {'_raw': ...}
         items = data if isinstance(data, list) else []
         item = items[0] if items else {}
-        status = item.get('status', '') if isinstance(item, dict) else ''
-        if status == 'success':
-            result['status'] = 'success'
-            # 扫描生成的文件
-            for f in output_dir.iterdir():
-                if f.stem.startswith(bvid):
-                    suffix = f.suffix.lower()
-                    if suffix in ('.mp4', '.m4a', '.jpg', '.png', '.webp'):
-                        result['files'][suffix] = str(f)
-            _p(f"[成功] {bvid} - {item.get('size', '')}")
+        status = item.get("status", "") if isinstance(item, dict) else ""
+        if status == "success":
+            result["status"] = "success"
+            result["files"] = _scan_downloaded_files(bvid, output_dir)
+            _p(f"[opencli success] {bvid} {item.get('size', '')}")
+            return result
+
+        _p(f"[opencli failed] {bvid}; trying yt-dlp fallback")
+        fallback = _download_with_ytdlp(bvid, output_dir)
+        result["status"] = fallback["status"]
+        result["files"] = fallback.get("files", {})
+        if fallback["status"] == "success":
+            _p(f"[yt-dlp success] {bvid}")
         else:
-            result['status'] = 'failed'
-            result['error'] = str(data)
-            _p(f"[失败] {bvid} - {result['error'][:100]}")
-    except Exception as e:
-        result['status'] = 'failed'
-        result['error'] = str(e)
-        _p(f"[异常] {bvid} - {e}")
-    
+            result["error"] = f"{data}\n{fallback.get('error', '')}".strip()
+            _p(f"[failed] {bvid} - {result['error'][:120]}")
+    except Exception as exc:
+        _p(f"[opencli exception] {bvid}; trying yt-dlp fallback: {exc}")
+        fallback = _download_with_ytdlp(bvid, output_dir)
+        result["status"] = fallback["status"]
+        result["files"] = fallback.get("files", {})
+        if fallback["status"] == "success":
+            _p(f"[yt-dlp success] {bvid}")
+        else:
+            result["error"] = f"{exc}\n{fallback.get('error', '')}".strip()
+            _p(f"[failed] {bvid} - {result['error'][:120]}")
     return result
 
-def download_batch(videos: list[dict], output_dir: str = DEFAULT_OUTPUT, 
-                   parallel: int = 3, skip_existing: bool = True) -> list[dict]:
-    """
-    批量下载
-    
-    videos: [{'bvid': 'BVxxx', 'title': '标题', ...}, ...]
-    返回: [{'bvid': 'BVxxx', 'status': 'success/skipped/failed', 'files': {...}}, ...]
-    """
+
+def download_batch(
+    videos: list[dict],
+    output_dir: str = DEFAULT_OUTPUT,
+    parallel: int = 3,
+    skip_existing: bool = True,
+) -> list[dict]:
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
-    
+
     if skip_existing:
         downloaded = get_downloaded_bvids(output_path)
-        videos = [v for v in videos if v.get('bvid') and v['bvid'] not in downloaded]
-        _p(f"[下载] 跳过已下载，剩余 {len(videos)} 个待下载")
-    
+        videos = [video for video in videos if video.get("bvid") and video["bvid"] not in downloaded]
+        _p(f"[download] remaining after cache check: {len(videos)}")
+
     if not videos:
-        _p("[下载] 没有需要下载的视频")
+        _p("[download] no videos need downloading")
         return []
-    
+
     results = []
-    
-    def do_download(v):
-        return download_single(v['bvid'], v.get('title', ''), output_path)
-    
+
+    def do_download(video: dict) -> dict:
+        return download_single(video["bvid"], video.get("title", ""), output_path)
+
     with ThreadPoolExecutor(max_workers=parallel) as pool:
-        futures = {pool.submit(do_download, v): v for v in videos}
+        futures = {pool.submit(do_download, video): video for video in videos}
         for future in as_completed(futures):
             results.append(future.result())
-    
-    # 统计
-    success = sum(1 for r in results if r['status'] == 'success')
-    skipped = sum(1 for r in results if r['status'] in ('skipped', 'cached'))
-    failed = sum(1 for r in results if r['status'] == 'failed')
-    _p(f"\n[下载完成] 成功: {success}  跳过: {skipped}  失败: {failed}")
-    
+
+    success = sum(1 for item in results if item["status"] == "success")
+    skipped = sum(1 for item in results if item["status"] in ("skipped", "cached"))
+    failed = sum(1 for item in results if item["status"] == "failed")
+    _p(f"\n[download done] success: {success} skipped: {skipped} failed: {failed}")
     return results
 
-if __name__ == '__main__':
-    # 测试
-    test_videos = [
-        {'bvid': 'BV11jDnBfErS', 'title': '测试视频'},
-    ]
-    results = download_batch(test_videos, parallel=1)
-    for r in results:
-        print(json.dumps(r, ensure_ascii=False))
+
+if __name__ == "__main__":
+    test_videos = [{"bvid": "BV11jDnBfErS", "title": "test video"}]
+    for row in download_batch(test_videos, parallel=1):
+        print(json.dumps(row, ensure_ascii=False))

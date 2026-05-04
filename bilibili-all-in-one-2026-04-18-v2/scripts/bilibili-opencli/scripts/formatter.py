@@ -12,9 +12,14 @@ DEFAULT_TEMP = os.environ.get("BILIBILI_OUTPUT_DIR", str(Path.home() / "bilibili
 
 def read_transcript(bvid: str, temp_dir: str = DEFAULT_TEMP) -> str:
     """读取转录文本"""
-    path = Path(temp_dir) / f"transcript_{bvid}.txt"
-    if path.exists():
-        return path.read_text(encoding='utf-8')
+    temp_path = Path(temp_dir)
+    candidates = [
+        temp_path / f"{bvid}_transcript.txt",
+        temp_path / f"transcript_{bvid}.txt",
+    ]
+    for path in candidates:
+        if path.exists():
+            return path.read_text(encoding='utf-8')
     return ""
 
 def parse_transcript_text(text: str) -> list[dict]:
@@ -103,6 +108,7 @@ def generate_note(bvid: str, video_info: dict, temp_dir: str = DEFAULT_TEMP,
     title = video_info.get('title', f'视频 {bvid}')
     author = video_info.get('author', video_info.get('up', ''))
     date_str = video_info.get('date', date.today().isoformat())
+    file_date = str(date_str).split()[0]
     plays = video_info.get('plays', 0)
     
     content = format_content(text, title, bvid, author, date_str, plays)
@@ -112,7 +118,7 @@ def generate_note(bvid: str, video_info: dict, temp_dir: str = DEFAULT_TEMP,
     vault.mkdir(parents=True, exist_ok=True)
     
     safe_title = re.sub(r'[\\/:*?"<>|]', '_', title)[:50]
-    out_file = vault / f"{date_str} AI早报-{safe_title}.md"
+    out_file = vault / f"{file_date} AI早报-{safe_title}.md"
     out_file.write_text(content, encoding='utf-8')
     
     return str(out_file)
