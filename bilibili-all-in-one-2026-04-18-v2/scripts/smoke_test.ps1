@@ -46,6 +46,19 @@ if not videos:
     raise SystemExit(2)
 '@ | & $PythonExe - $ScriptDir $Query
 & $PythonExe $RunPy --search $Query --limit 2 --dry-run
+
+Write-Host "[Smoke] Target video site-search"
+& $PythonExe $RunPy `
+    --find-video "OpenAI OpenClaw 2026-05-03" `
+    --date 2026-05-03 `
+    --title OpenAI `
+    --must OpenClaw `
+    --limit 10 `
+    --strict-find `
+    --dry-run
+if ($LASTEXITCODE -ne 0) {
+    throw "Target video site-search smoke test failed."
+}
 if ($SavedOpencli) {
     $env:OPENCLI_CMD = $SavedOpencli
 }

@@ -59,6 +59,41 @@ links:
 
 ---
 
+## 站内搜索定位指定视频
+
+当用户要求“必须找到某一期视频”时，优先使用 `--find-video`，它会先走 B 站站内搜索，再用作者、日期、标题片段和必含关键词过滤排序。`--bvid` 只适合已经知道 BV 后直接处理，不等同于站内搜索。
+
+示例：从 B 站站内搜索定位橘鸦Juya 2026-05-03 这一期 AI 早报：
+
+```powershell
+$Skill = "F:\AIAPP\Codex\.codex\skills\bilibili-all-in-one-2026-04-18-v2"
+$Py = "E:\MorenAnzhuangLujing\Huangjingdajian\python-venvs\bilibili-all-in-one\Scripts\python.exe"
+$Run = "$Skill\scripts\bilibili-opencli\scripts\run.py"
+
+& $Py $Run `
+  --find-video "OpenAI OpenClaw AI早报 2026-05-03" `
+  --author "橘鸦Juya" `
+  --date 2026-05-03 `
+  --must OpenClaw `
+  --limit 10 `
+  --strict-find `
+  --dry-run
+```
+
+预期命中：`BV1ro9dBFEEB`，标题为 `OpenAI 宣布 ChatGPT 账户可登录 OpenClaw 复用订阅；猎豹移动AI产品被指抄袭开源项目【AI 早报 2026-05-03】`。
+
+可用过滤参数：
+
+| 参数 | 作用 |
+|------|------|
+| `--find-video <query>` | 使用 B 站站内搜索定位指定视频。 |
+| `--author <name>` | 限定 UP 主/作者名称。 |
+| `--title <text>` | 限定标题片段。 |
+| `--must <term>` | 要求标题/作者/BV/日期中必须包含该词，可重复。 |
+| `--strict-find` | 找不到匹配视频时返回非零退出码，适合自动化。 |
+
+---
+
 ## 目录结构
 
 ```

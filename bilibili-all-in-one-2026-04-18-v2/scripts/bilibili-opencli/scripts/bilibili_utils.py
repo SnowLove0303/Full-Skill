@@ -117,30 +117,32 @@ def _search_videos_public_api(query: str, limit=20, page=1) -> list[dict]:
         "https://api.bilibili.com/x/web-interface/search/type"
         f"?search_type=video&keyword={encoded}&page={page}"
     )
-    try:
-        direct_data = _get_json(direct_url, "https://search.bilibili.com/")
-    except Exception:
-        direct_data = {}
-
     videos = []
-    for rank, item in enumerate((direct_data.get("data") or {}).get("result") or [], 1):
-        bvid = item.get("bvid") or extract_bvid(item.get("arcurl", ""))
-        if not bvid or not str(bvid).startswith("BV"):
-            continue
-        videos.append({
-            "rank": rank,
-            "bvid": bvid,
-            "title": _clean_html(item.get("title", "")),
-            "author": item.get("author", ""),
-            "plays": item.get("play", 0),
-            "date": _format_pubdate(item.get("pubdate")),
-            "url": f"https://www.bilibili.com/video/{bvid}/",
-            "source": "public_api",
-        })
-        if len(videos) >= limit:
+    for attempt in range(3):
+        try:
+            direct_data = _get_json(direct_url, "https://search.bilibili.com/")
+        except Exception:
+            direct_data = {}
+        for rank, item in enumerate((direct_data.get("data") or {}).get("result") or [], 1):
+            bvid = item.get("bvid") or extract_bvid(item.get("arcurl", ""))
+            if not bvid or not str(bvid).startswith("BV"):
+                continue
+            videos.append({
+                "rank": rank,
+                "bvid": bvid,
+                "title": _clean_html(item.get("title", "")),
+                "author": item.get("author", ""),
+                "plays": item.get("play", 0),
+                "date": _format_pubdate(item.get("pubdate")),
+                "url": f"https://www.bilibili.com/video/{bvid}/",
+                "source": "public_api",
+            })
+            if len(videos) >= limit:
+                return videos
+        if videos:
             return videos
-    if videos:
-        return videos
+        if attempt < 2:
+            time.sleep(0.5 * (attempt + 1))
 
     url = (
         "https://api.bilibili.com/x/web-interface/search/type"
@@ -241,7 +243,7 @@ def normalize_video_info(raw: dict) -> dict:
     """统一不同来源的视频信息格式"""
     # 用户视频列表格式（优先判断，有 plays 字段）
     if 'plays' in raw and 'rank' in raw:
-        bvid = extract_bvid(raw.get('url', ''))
+        bvid = raw.get('bvid') or extract_bvid(raw.get('url', ''))
         title = raw.get('title', '')
         title = re.sub(r'[\\/:*?"<>|]', '_', title)
         return {
@@ -251,20 +253,22 @@ def normalize_video_info(raw: dict) -> dict:
             'plays': raw.get('plays', 0),
             'date': raw.get('date', ''),
             'url': raw.get('url', ''),
-            'source': 'user'
+            'source': raw.get('source', 'user')
         }
     # 搜索结果格式（有 author 字段）
     if 'url' in raw and 'rank' in raw and 'author' in raw:
-        bvid = extract_bvid(raw.get('url', ''))
+        bvid = raw.get('bvid') or extract_bvid(raw.get('url', ''))
         title = raw.get('title', '')
         title = re.sub(r'[\\/:*?"<>|]', '_', title)
         return {
             'bvid': bvid,
             'title': title,
             'author': raw.get('author', ''),
+            'plays': raw.get('plays', 0),
+            'date': raw.get('date', ''),
             'score': raw.get('score', 0),
             'url': raw.get('url', ''),
-            'source': 'search'
+            'source': raw.get('source', 'search')
         }
     return raw
 
