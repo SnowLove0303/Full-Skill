@@ -1,49 +1,43 @@
 # Full-Skill
 
-Personal Codex skill collection.
+Version: V3
 
-## Skills
+Reusable skill collection for Codex/OpenClaw agents. Current focus:
 
-### bilibili-all-in-one-2026-04-18-v2
+- `bilibili-all-in-one-2026-04-18-v2`: Bilibili search/download/transcribe/note workflow.
+- `scripts/juya-daily`: strict Juya daily-video full flow, built for OpenClaw scheduled agents and local verification.
 
-Bilibili workflow skill for:
+## V3 Highlights
 
-- Searching Bilibili videos and UP creators.
-- Locating a specific target video through Bilibili site search with filters.
-- Listing latest UP videos.
-- Downloading video/audio through `opencli` where available.
-- Falling back to Bilibili public APIs for search and UP video discovery.
-- Transcribing downloaded media and generating structured daily notes.
+- Strict latest-video gate for Juya: only accepts videos verified by Bilibili `x/web-interface/view`, `owner.mid=285286947`, AI daily title, target date, newest `pubdate`.
+- Reusable path resolution: scripts can run inside an OpenClaw agent workspace or from a cloned repo on another device.
+- Default runtime output stays under `F:\AIAPP\Xiangmu\MutiAgent\runtime\bilibili-fullflow` on this machine; override with `BILIBILI_FULLFLOW_RUNTIME_ROOT`.
+- Notion publishing creates one new daily page per run by default. It only updates a fixed page when `BILIBILI_DAILY_NOTION_PAGE_ID` is explicitly set.
+- No token or cookie is stored in this repo. Use environment variables or local OpenClaw workspace config.
 
-Path:
-
-```text
-bilibili-all-in-one-2026-04-18-v2/
-```
-
-Quick smoke test:
+## Quick Start
 
 ```powershell
-.\bilibili-all-in-one-2026-04-18-v2\scripts\setup.ps1 -RunSmokeTest
-python .\bilibili-all-in-one-2026-04-18-v2\scripts\bilibili-opencli\scripts\run.py --search "橘鸦Juya" --limit 3 --dry-run
+cd F:\AIAPP\Xiangmu\MutiAgent\Full-Skill\bilibili-all-in-one-2026-04-18-v2
+.\scripts\setup.ps1 -RunSmokeTest
 ```
 
-Target-video site-search test:
+Strict Juya lookup only:
 
 ```powershell
-python .\bilibili-all-in-one-2026-04-18-v2\scripts\bilibili-opencli\scripts\run.py --find-video "OpenAI OpenClaw AI早报 2026-05-03" --author "橘鸦Juya" --date 2026-05-03 --must OpenClaw --limit 10 --strict-find --dry-run
+.\scripts\juya-daily\find-juya-today-daily.ps1
 ```
 
-Expected target:
-
-```text
-BV1ro9dBFEEB
-橘鸦Juya
-OpenAI 宣布 ChatGPT 账户可登录 OpenClaw 复用订阅；猎豹移动AI产品被指抄袭开源项目【AI 早报 2026-05-03】
-```
-
-Optional UP-list test, best with `OPENCLI_CMD` configured because Bilibili may block anonymous signed space APIs:
+Full flow:
 
 ```powershell
-python .\bilibili-all-in-one-2026-04-18-v2\scripts\bilibili-opencli\scripts\run.py --uid 285286947 --limit 3 --dry-run
+$env:OPENCLAW_AGENT_WORKSPACE = "F:\AIAPP\Openclaw\agents\bilibili-skill-runner\workspace"
+$env:JUYA_WRITE_NOTION = "1"
+.\scripts\juya-daily\run-juya-today-fullflow.ps1
 ```
+
+Docs:
+
+- [Juya daily V3 usage](bilibili-all-in-one-2026-04-18-v2/docs/JUYA_DAILY_V3.md)
+- [OpenClaw agent prompt](bilibili-all-in-one-2026-04-18-v2/docs/OPENCLAW_AGENT_PROMPT.md)
+- [New device reuse guide](bilibili-all-in-one-2026-04-18-v2/docs/REUSE_ON_NEW_DEVICE.md)
