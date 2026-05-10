@@ -5,6 +5,7 @@ Version: V3
 Reusable skill collection for Codex/OpenClaw agents. Current focus:
 
 - `bilibili-all-in-one-2026-04-18-v2`: Bilibili search/download/transcribe/note workflow.
+- `doubao-chat`: Chrome-based Doubao chat skill with an optional CDP smoke-test program.
 - `scripts/juya-daily`: strict Juya daily-video full flow, built for OpenClaw scheduled agents and local verification.
 
 ## V3 Highlights
@@ -38,6 +39,7 @@ $env:JUYA_WRITE_NOTION = "1"
 
 Docs:
 
+- [Doubao chat overview](docs/doubao-chat-overview.md)
 - [Juya daily V3 usage](bilibili-all-in-one-2026-04-18-v2/docs/JUYA_DAILY_V3.md)
 - [OpenClaw agent prompt](bilibili-all-in-one-2026-04-18-v2/docs/OPENCLAW_AGENT_PROMPT.md)
 - [New device reuse guide](bilibili-all-in-one-2026-04-18-v2/docs/REUSE_ON_NEW_DEVICE.md)
