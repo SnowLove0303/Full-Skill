@@ -38,7 +38,7 @@ $Run = "$Skill\scripts\bilibili-opencli\scripts\run.py"
   --dry-run
 ```
 
-预期命中：
+历史命中过：
 
 ```text
 BV1ro9dBFEEB

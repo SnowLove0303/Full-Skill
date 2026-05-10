@@ -1,43 +1,29 @@
 # Full-Skill
 
-Version: V3
+Reusable Codex skill collection. Current package:
 
-Reusable skill collection for Codex/OpenClaw agents. Current focus:
+- `bilibili-all-in-one-2026-04-18-v2`: the single Bilibili entrypoint skill.
 
-- `bilibili-all-in-one-2026-04-18-v2`: Bilibili search/download/transcribe/note workflow.
-- `scripts/juya-daily`: strict Juya daily-video full flow, built for OpenClaw scheduled agents and local verification.
+## Bilibili All In One
 
-## V3 Highlights
+This package merges the former Bilibili skills into one root `SKILL.md`:
 
-- Strict latest-video gate for Juya: only accepts videos verified by Bilibili `x/web-interface/view`, `owner.mid=285286947`, AI daily title, target date, newest `pubdate`.
-- Reusable path resolution: scripts can run inside an OpenClaw agent workspace or from a cloned repo on another device.
-- Default runtime output stays under `F:\AIAPP\Xiangmu\MutiAgent\runtime\bilibili-fullflow` on this machine; override with `BILIBILI_FULLFLOW_RUNTIME_ROOT`.
-- Notion publishing creates one new daily page per run by default. It only updates a fixed page when `BILIBILI_DAILY_NOTION_PAGE_ID` is explicitly set.
-- No token or cookie is stored in this repo. Use environment variables or local OpenClaw workspace config.
+- AI news workflow from `scripts/bilibili-news`
+- OpenCLI search/download/transcribe/note workflow from `scripts/bilibili-opencli`
+- Hot monitor report and email workflow from `scripts/bilibili-hot-monitor`
+
+The old child skill entry files were converted to `MODULE.md` files so Codex discovers only the root Bilibili skill while still keeping module-level documentation.
 
 ## Quick Start
 
 ```powershell
-cd F:\AIAPP\Xiangmu\MutiAgent\Full-Skill\bilibili-all-in-one-2026-04-18-v2
+cd .\bilibili-all-in-one-2026-04-18-v2
 .\scripts\setup.ps1 -RunSmokeTest
 ```
 
-Strict Juya lookup only:
+Useful references:
 
-```powershell
-.\scripts\juya-daily\find-juya-today-daily.ps1
-```
-
-Full flow:
-
-```powershell
-$env:OPENCLAW_AGENT_WORKSPACE = "F:\AIAPP\Openclaw\agents\bilibili-skill-runner\workspace"
-$env:JUYA_WRITE_NOTION = "1"
-.\scripts\juya-daily\run-juya-today-fullflow.ps1
-```
-
-Docs:
-
-- [Juya daily V3 usage](bilibili-all-in-one-2026-04-18-v2/docs/JUYA_DAILY_V3.md)
-- [OpenClaw agent prompt](bilibili-all-in-one-2026-04-18-v2/docs/OPENCLAW_AGENT_PROMPT.md)
-- [New device reuse guide](bilibili-all-in-one-2026-04-18-v2/docs/REUSE_ON_NEW_DEVICE.md)
+- [Root skill](bilibili-all-in-one-2026-04-18-v2/SKILL.md)
+- [Quick reference](bilibili-all-in-one-2026-04-18-v2/quick-ref.md)
+- [OpenCLI module](bilibili-all-in-one-2026-04-18-v2/scripts/bilibili-opencli/MODULE.md)
+- [Hot monitor module](bilibili-all-in-one-2026-04-18-v2/scripts/bilibili-hot-monitor/MODULE.md)

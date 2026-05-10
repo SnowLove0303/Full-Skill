@@ -1,11 +1,7 @@
----
-name: bilibili-opencli
-description: >
-  Bilibili 视频自动转笔记工作流。搜索 → 下载 → 转录 → 生成 Obsidian 笔记。
-  支持 Whisper/FunASR 双引擎、批量多UP主、PowerShell 执行（WSL 不兼容）。
----
+# Bilibili OpenCLI 模块
 
-# Bilibili OpenCLI Workflow Skill
+> 本文件是 `bilibili-all-in-one` 的内部模块文档，不再是独立 Codex Skill。
+> 唯一技能入口：`../../SKILL.md`。
 
 **功能**：用 `opencli bilibili` 命令搜索 → 下载 → Whisper/FunASR 转录 → 生成 Obsidian 笔记  
 **支持**：批量处理、多UP主、日期过滤
@@ -175,7 +171,8 @@ summary = generate_daily_summary(videos, temp_dir=OUTPUT, vault_path=VAULT)
 $env:PATH = 'C:\Users\chenz\AppData\Local\Microsoft\WinGet\Packages\Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe\ffmpeg-8.1-full_build\bin;' + $env:PATH
 
 # 通过 PowerShell 调用 bilibili-opencli（不能用 WSL bash）
-python F:\skill\bilibili-opencli\scripts\run.py --uid 285286947 --limit 3
+$Skill = "F:\AIAPP\Codex\.codex\skills\bilibili-all-in-one-2026-04-18-v2"
+python "$Skill\scripts\bilibili-opencli\scripts\run.py" --uid 285286947 --limit 3
 ```
 
 ### FFmpeg 正确路径（winget 安装）

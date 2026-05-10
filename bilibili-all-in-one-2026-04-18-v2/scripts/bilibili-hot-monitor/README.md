@@ -1,6 +1,9 @@
-# B站热门视频监控 Skill
+# B站热门视频监控模块
 
 自动获取B站热门视频，使用字幕+LLM生成AI总结，生成包含数据分析的日报，支持邮件发送。
+
+> 本模块已整合进 `bilibili-all-in-one`，不再作为独立 Skill 暴露。
+> 推荐入口：`..\..\SKILL.md` 中的“功能二：热门日报”。
 
 ## 📦 版本历史
 
@@ -18,7 +21,7 @@
   - 禁用所有模型的 thinking/reasoning 模式，避免输出被截断
   - 添加网络重试机制（最多3次），提高稳定性
   - 优化 JSON 解析，增加 fallback 提取逻辑
-  - 改进 SKILL.md 中的 Cookie 获取说明（使用 Network 选项卡方法）
+  - 改进模块文档中的 Cookie 获取说明（使用 Network 选项卡方法）
 
 - 🐛 **修复**
   - 修复字幕获取兼容性问题
@@ -133,9 +136,9 @@ python generate_report.py --cookies "你的cookies" --openrouter-key "你的key"
 └── 🔗 视频链接
 ```
 
-## 🤖 作为AI Skill使用
+## 🤖 作为 Bilibili All-in-One 模块使用
 
-本项目可作为 OpenClaw 等 AI Agent 的 Skill 使用。
+本项目作为 `bilibili-all-in-one` 的内部热门日报模块使用。
 
 触发词：
 - "B站热门"
@@ -147,7 +150,7 @@ python generate_report.py --cookies "你的cookies" --openrouter-key "你的key"
 
 ```
 bilibili-monitor/
-├── SKILL.md                    # AI Skill 说明文件
+├── MODULE.md                   # 模块说明文件
 ├── README.md                   # 本文件
 ├── requirements.txt            # Python 依赖
 ├── generate_report.py          # 报告生成脚本

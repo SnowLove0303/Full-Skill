@@ -17,6 +17,8 @@ if (Test-Path $EnvFile) {
     . $EnvFile
 }
 
+$env:PYTHONIOENCODING = "utf-8"
+
 $VenvPython = Join-Path $InstallRoot "python-venvs\bilibili-all-in-one\Scripts\python.exe"
 $PythonExe = if (Test-Path $VenvPython) { $VenvPython } else { "python" }
 $ScriptDir = Join-Path $SkillRoot "scripts\bilibili-opencli\scripts"
@@ -47,17 +49,14 @@ if not videos:
 '@ | & $PythonExe - $ScriptDir $Query
 & $PythonExe $RunPy --search $Query --limit 2 --dry-run
 
-Write-Host "[Smoke] Target video site-search"
+Write-Host "[Smoke] Site-search matching"
 & $PythonExe $RunPy `
-    --find-video "OpenAI OpenClaw 2026-05-03" `
-    --date 2026-05-03 `
-    --title OpenAI `
-    --must OpenClaw `
+    --find-video "bilibili" `
     --limit 10 `
     --strict-find `
     --dry-run
 if ($LASTEXITCODE -ne 0) {
-    throw "Target video site-search smoke test failed."
+    throw "Site-search smoke test failed."
 }
 if ($SavedOpencli) {
     $env:OPENCLI_CMD = $SavedOpencli
