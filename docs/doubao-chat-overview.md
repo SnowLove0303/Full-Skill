@@ -43,7 +43,7 @@ If PowerShell script execution is blocked, use:
 .\doubao-chat\scripts\doubao_quick_send.cmd -Prompt "hello"
 ```
 
-The quick-send wrapper installs Playwright into `doubao-chat/scripts/.runtime/playwright` if needed, connects to Chrome CDP, reuses an existing Doubao chat by default, optionally uploads images, sends the prompt, waits 10 seconds by default, writes optional evidence files, and prints JSON. It remembers the last successful Doubao chat URL in `doubao-chat/scripts/.runtime/doubao-state.json`; pass `-NewChat` only when a context-free answer is required.
+The quick-send wrapper installs Playwright into `doubao-chat/scripts/.runtime/playwright` if needed, connects to Chrome CDP, reuses an existing Doubao chat by default, optionally uploads images, sends the prompt, waits 10 seconds by default, writes optional evidence files, and prints JSON. It remembers the last successful Doubao chat URL in `doubao-chat/scripts/.runtime/doubao-state.json`; pass `-NewChat` only when a context-free answer is required. If Doubao returns the small generation problem retry prompt, the wrapper sends `继续` once and waits again.
 
 ## Browser Control
 

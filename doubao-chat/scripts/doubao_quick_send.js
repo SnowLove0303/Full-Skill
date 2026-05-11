@@ -254,6 +254,12 @@ function extractDelta(beforeText, afterText, prompt) {
   return dedupeLines(trimFollowupSuggestions(candidates)).join("\n").trim();
 }
 
+function isMinorGenerationIssue(text) {
+  const compact = String(text || "").replace(/\s+/g, "");
+  return /(\u56de\u590d)?\u751f\u6210.*\u9047\u5230.*\u5c0f\u95ee\u9898.*\u91cd\u65b0\u8bd5\u8bd5/.test(compact)
+    || /\u70b9\u5c0f\u95ee\u9898.*\u91cd\u65b0\u8bd5\u8bd5/.test(compact);
+}
+
 async function getReplyText(page, beforeText, prompt) {
   const bodyText = await getBodyText(page);
   const deltaReply = extractDelta(beforeText, bodyText, prompt);
@@ -606,7 +612,25 @@ async function main() {
     await sendPrompt(page, prompt, timeoutMs);
     recordSendTimestamp();
     await page.waitForTimeout(waitMs);
-    const { bodyText, reply } = await getReplyText(page, beforeText, prompt);
+    let { bodyText, reply } = await getReplyText(page, beforeText, prompt);
+    const recovery = {
+      minorGenerationIssue: isMinorGenerationIssue(reply),
+      continueSent: false,
+      prompt: "",
+    };
+
+    if (recovery.minorGenerationIssue) {
+      const continuePrompt = "\u7ee7\u7eed";
+      recovery.continueSent = true;
+      recovery.prompt = continuePrompt;
+      const retryBeforeText = bodyText;
+      await sendPrompt(page, continuePrompt, timeoutMs);
+      recordSendTimestamp();
+      await page.waitForTimeout(waitMs);
+      const retried = await getReplyText(page, retryBeforeText, continuePrompt);
+      bodyText = retried.bodyText;
+      reply = retried.reply || reply;
+    }
 
     const screenshotPath = screenshot
       ? (fs.mkdirSync(path.dirname(path.resolve(screenshot)), { recursive: true }), await page.screenshot({ path: screenshot, fullPage: true }), screenshot)
@@ -634,6 +658,7 @@ async function main() {
       title: pageTitle,
       prompt,
       images: imagePaths,
+      recovery,
       reply,
       evidence: {
         screenshot: screenshotPath,
