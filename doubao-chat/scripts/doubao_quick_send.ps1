@@ -18,14 +18,18 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-if (-not $CdpUrl) {
-  $CdpUrl = if ($env:DOUBAO_CDP_URL) {
-    $env:DOUBAO_CDP_URL
-  } elseif ($env:CHROME_DIDY_CDP_URL) {
-    $env:CHROME_DIDY_CDP_URL
-  } else {
-    "http://127.0.0.1:9222"
+$scriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
+$statePath = Join-Path $scriptRoot ".runtime\doubao-state.json"
+
+function Read-StateCdpUrl([string]$Path) {
+  if (-not (Test-Path $Path)) { return "" }
+  try {
+    $state = Get-Content -LiteralPath $Path -Raw | ConvertFrom-Json
+    if ($state.lastGoodCdpUrl) { return [string]$state.lastGoodCdpUrl }
+  } catch {
+    return ""
   }
+  return ""
 }
 
 function Get-DebugPort([string]$Url) {
@@ -40,6 +44,25 @@ function Test-Cdp([string]$Url) {
     return $true
   } catch {
     return $false
+  }
+}
+
+if (-not $CdpUrl) {
+  $stateCdpUrl = Read-StateCdpUrl $statePath
+  $candidateCdpUrls = @(
+    $stateCdpUrl,
+    $env:DOUBAO_CDP_URL,
+    $env:CHROME_DIDY_CDP_URL,
+    "http://127.0.0.1:9222"
+  )
+  foreach ($candidateCdpUrl in $candidateCdpUrls) {
+    if ($candidateCdpUrl -and (Test-Cdp $candidateCdpUrl)) {
+      $CdpUrl = $candidateCdpUrl
+      break
+    }
+  }
+  if (-not $CdpUrl) {
+    $CdpUrl = "http://127.0.0.1:9222"
   }
 }
 
@@ -97,7 +120,6 @@ if (-not (Test-Cdp $CdpUrl)) {
   )
 
   if (-not $UseDefaultChromeProfile) {
-    $scriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
     $profileDir = Join-Path $scriptRoot ".runtime\chrome-profile"
     New-Item -ItemType Directory -Force -Path $profileDir | Out-Null
     $chromeArgs = @(
@@ -131,7 +153,6 @@ if (-not $node) { throw "node.exe was not found on PATH." }
 $npm = Get-Command npm -ErrorAction SilentlyContinue
 if (-not $npm) { throw "npm was not found on PATH." }
 
-$scriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 $runtimeRoot = Join-Path $scriptRoot ".runtime\playwright"
 $nodeModules = Join-Path $runtimeRoot "node_modules"
 $packageDir = Join-Path $nodeModules "playwright"
@@ -152,7 +173,8 @@ $nodeArgs = @(
   "--prompt", $Prompt,
   "--wait-ms", "$WaitMs",
   "--timeout-ms", "$TimeoutMs",
-  "--cooldown-ms", "$CooldownMs"
+  "--cooldown-ms", "$CooldownMs",
+  "--state-out", $statePath
 )
 
 if ($Screenshot) { $nodeArgs += @("--screenshot", $Screenshot) }

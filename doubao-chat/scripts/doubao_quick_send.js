@@ -39,6 +39,13 @@ function writeFile(filePath, value) {
   return filePath;
 }
 
+function writeJson(filePath, value) {
+  if (!filePath) return "";
+  fs.mkdirSync(path.dirname(path.resolve(filePath)), { recursive: true });
+  fs.writeFileSync(filePath, `${JSON.stringify(value, null, 2)}\n`, "utf8");
+  return filePath;
+}
+
 function runtimePath(name) {
   const dir = path.join(__dirname, ".runtime");
   fs.mkdirSync(dir, { recursive: true });
@@ -562,6 +569,7 @@ async function main() {
   const screenshot = arg("screenshot");
   const replyOut = arg("reply-out");
   const bodyOut = arg("body-out");
+  const stateOut = arg("state-out");
   const imagePaths = normalizeImagePaths([...argValues("image"), ...argValues("image-path")]);
 
   if (!prompt) throw new Error("Missing required --prompt value.");
@@ -604,6 +612,15 @@ async function main() {
       : "";
     const replyPath = writeFile(replyOut, reply);
     const bodyPath = writeFile(bodyOut, bodyText);
+    const pageTitle = await page.title();
+    const statePath = writeJson(stateOut, {
+      lastGoodCdpUrl: cdpUrl,
+      lastOkAt: new Date().toISOString(),
+      lastUrl: page.url(),
+      lastPromptLength: prompt.length,
+      lastImageCount: imagePaths.length,
+      updatedBy: "doubao_quick_send",
+    });
 
     console.log(JSON.stringify({
       ok: Boolean(reply),
@@ -612,7 +629,7 @@ async function main() {
       cooldownMs,
       cooldownWaitMs,
       url: page.url(),
-      title: await page.title(),
+      title: pageTitle,
       prompt,
       images: imagePaths,
       reply,
@@ -620,6 +637,7 @@ async function main() {
         screenshot: screenshotPath,
         reply: replyPath,
         body: bodyPath,
+        state: statePath,
       },
     }, null, 2));
   } catch (error) {

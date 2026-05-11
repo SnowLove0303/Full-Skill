@@ -34,6 +34,8 @@ Behavior:
 - Optionally uploads one or more local images before sending the prompt.
 - Uses a local send lock so multiple agents do not operate the same Doubao browser tab concurrently.
 - Uses a default `12000` ms cooldown between sends to reduce rate/risk-control triggers.
+- Records the last working logged-in CDP endpoint in `scripts\.runtime\doubao-state.json` after a successful send.
+- When `-CdpUrl` is omitted, prefers the recorded working endpoint if it is still reachable, then `DOUBAO_CDP_URL`, then `CHROME_DIDY_CDP_URL`.
 - Detects login, CAPTCHA, human verification, phone/app checks, and risk-control text before sending; if detected, it stops and reports the blocker.
 - Sends the prompt to the visible chat input.
 - Waits `10000` ms after sending by default.
@@ -82,6 +84,8 @@ Useful options:
 Note: Chrome 136+ may refuse remote debugging on the default user data directory. If `-UseDefaultChromeProfile` starts Chrome but `/json/version` does not respond, use the persistent controlled profile from `-LaunchChrome`, let the user log into Doubao there once, keep that tab/profile, and retry. Do not try to bypass verification.
 
 The default DevTools endpoint is `http://127.0.0.1:9222`. Override it with `-CdpUrl`, `DOUBAO_CDP_URL`, or the ChromeDidy-compatible `CHROME_DIDY_CDP_URL`.
+
+After a successful send, agents can omit `-CdpUrl`; the wrapper will prefer the recorded logged-in endpoint from `scripts\.runtime\doubao-state.json` when that endpoint is still alive, even if a stale ChromeDidy environment variable points elsewhere.
 
 ## Browser Control Method For Other Agents
 
