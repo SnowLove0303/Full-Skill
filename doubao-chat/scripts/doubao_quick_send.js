@@ -125,8 +125,8 @@ function detectHumanGate(bodyText, pageUrl = "") {
   const text = bodyText.toLowerCase();
   const url = pageUrl.toLowerCase();
   const checks = [
-    ["login", /\blog\s*in\b|sign\s*in|\u767b\u5f55|\u626b\u7801\u767b\u5f55|\u624b\u673a\u53f7\u767b\u5f55/],
-    ["captcha", /captcha|\u9a8c\u8bc1\u7801|\u4eba\u673a\u9a8c\u8bc1|\u5b89\u5168\u9a8c\u8bc1|\u8bf7\u5b8c\u6210\u9a8c\u8bc1|\u6ed1\u5757|\u62d6\u52a8\u6ed1\u5757/],
+    ["login", /\blog\s*in\b|sign\s*in|\u626b\u7801\u767b\u5f55|\u624b\u673a\u53f7\u767b\u5f55|\u8bf7\u5148\u767b\u5f55|\u7acb\u5373\u767b\u5f55|\u5feb\u6377\u767b\u5f55/],
+    ["captcha", /captcha|\u8bf7\u8f93\u5165\u9a8c\u8bc1\u7801|\u83b7\u53d6\u9a8c\u8bc1\u7801|\u8bf7\u5b8c\u6210\u9a8c\u8bc1|\u62d6\u52a8\u6ed1\u5757|\u6ed1\u5757\u9a8c\u8bc1|\u5b89\u5168\u9a8c\u8bc1/],
     ["risk-control", /risk|unusual traffic|\u98ce\u9669|\u8d26\u53f7\u5b89\u5168|\u73af\u5883\u5f02\u5e38|\u64cd\u4f5c\u9891\u7e41|\u8bf7\u7a0d\u540e\u518d\u8bd5/],
     ["phone-or-app-check", /phone verification|app confirmation|\u624b\u673a\u9a8c\u8bc1|\u77ed\u4fe1\u9a8c\u8bc1|\u8bf7\u5728.*app.*\u786e\u8ba4/],
   ];
