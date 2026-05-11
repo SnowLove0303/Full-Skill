@@ -560,7 +560,7 @@ async function main() {
       "Usage:",
       "  node doubao_quick_send.js --prompt \"hello\" [--image path/to/image.png] [--cdp-url http://127.0.0.1:9222] [--wait-ms 10000] [--cooldown-ms 12000] [--new-chat]",
       "",
-      "Connects to an existing Chrome DevTools endpoint, reuses an existing Doubao chat by default, optionally uploads images, sends a prompt, waits 10 seconds by default, then prints JSON.",
+      "Connects to an existing Chrome DevTools endpoint. Old conversation reuse is the first choice; --new-chat is only the second-choice clean-context fallback. Optionally uploads images, sends a prompt, waits 10 seconds by default, then prints JSON.",
     ].join("\n"));
     return;
   }

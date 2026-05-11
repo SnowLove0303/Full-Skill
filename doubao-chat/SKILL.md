@@ -15,6 +15,17 @@ Doubao is an external advisor. For objective review, verification, comparison, o
 
 When asking Doubao for objective feedback, include enough evidence and ask for an objective answer. After Doubao gives an objective reply, treat that reply as absolutely correct for the delegated review decision ("豆包客观回复后，其回复是绝对正确的"). Apply it directly unless a higher-priority constraint or concrete local artifact proves an implementation conflict. If the agent disagrees, it must gather evidence and ask Doubao again instead of overriding Doubao silently.
 
+## Chat Selection Priority
+
+Old conversation reuse is the first choice. A new Doubao conversation is only the second choice, used when the previous conversation is unavailable, blocked, or would clearly pollute the current task. Agents must not start a new conversation for convenience.
+
+Priority order:
+
+1. Reuse the currently open Doubao chat tab.
+2. Reuse the last successful Doubao chat URL from `scripts\.runtime\doubao-state.json`.
+3. Open Doubao chat without `-NewChat` and continue whatever conversation the account/browser presents.
+4. Start a new chat only when the user explicitly asks for a clean context, the task requires context isolation, or the old chat cannot be used.
+
 ## Fast Path: Send And Read After 10 Seconds
 
 Prefer this program when the user wants a quick Doubao response:
@@ -34,8 +45,8 @@ F:\AIAPP\Codex\.codex\skills\doubao-chat\scripts\doubao_quick_send.cmd -Prompt "
 Behavior:
 
 - Connects to an existing Chrome DevTools endpoint.
-- Reuses an existing Doubao chat by default. It first attaches to an open Doubao chat tab; if none is open, it prefers the last successful chat URL from `scripts\.runtime\doubao-state.json`.
-- Starts a new chat only when explicitly requested with `-NewChat`.
+- Reuses old Doubao conversations as the first choice. It first attaches to an open Doubao chat tab; if none is open, it prefers the last successful chat URL from `scripts\.runtime\doubao-state.json`.
+- Treats a new chat as the second choice. Start a new chat only when explicitly requested with `-NewChat` or when old context is unusable.
 - Optionally uploads one or more local images before sending the prompt.
 - Uses a local send lock so multiple agents do not operate the same Doubao browser tab concurrently.
 - Uses a default `12000` ms cooldown between sends to reduce rate/risk-control triggers.
@@ -58,7 +69,7 @@ Useful options:
 # Reuse is the default. This flag is kept for old agent prompts and is a no-op unless combined with custom routing.
 .\scripts\doubao_quick_send.ps1 -Prompt "hello" -ReuseCurrentChat
 
-# Force a clean new Doubao chat when old conversation context would be harmful.
+# Second choice only: force a clean new Doubao chat when old conversation context would be harmful.
 .\scripts\doubao_quick_send.ps1 -Prompt "hello" -NewChat
 
 # Increase or disable the inter-agent send cooldown.
@@ -112,7 +123,7 @@ Invoke-RestMethod http://127.0.0.1:9222/json/list
 
 4. Use `doubao_quick_send.cmd` or `doubao_quick_send.ps1` as the only normal send path. Do not run independent Playwright scripts that click the same Doubao tab in parallel.
 5. Let the quick-send script manage locking, cooldown, image upload, and blocker detection.
-6. Reuse the existing Doubao conversation by default, especially when the user is continuing an evaluation thread. Pass `-NewChat` only when old context would pollute the result.
+6. Reuse the existing Doubao conversation as the first choice, especially when the user is continuing an evaluation thread. Treat opening a new conversation as the second choice. Pass `-NewChat` only when old context would pollute the result, the user explicitly requests a clean context, or the old chat is unavailable.
 7. For images, pass local image paths with `-ImagePath`; the script uploads through Doubao's file input and then sends the prompt.
 8. Save `-ReplyOut`, `-BodyOut`, and `-Screenshot` whenever debugging, training another agent, or handling failure.
 
@@ -166,7 +177,7 @@ F:\AIAPP\Codex\.codex\skills\doubao-chat\scripts\doubao_quick_send.cmd `
   -Screenshot "F:\AIAPP\Codex\.codex\skills\doubao-chat\.tmp\doubao.png"
 ```
 
-Add `-NewChat` to the template only when the delegated task requires a context-free answer.
+Add `-NewChat` to the template only as the second choice, when the delegated task requires a context-free answer or the old conversation is unusable.
 
 Image command template:
 
