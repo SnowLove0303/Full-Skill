@@ -1,4 +1,4 @@
 interface:
   display_name: "Doubao Chat"
-  short_description: "Use Chrome to ask Doubao and return its answer."
-  default_prompt: "Use $doubao-chat to ask Doubao for feedback on this idea."
+  short_description: "Use Chrome CDP to ask Doubao with text or images and return its answer."
+  default_prompt: "Use $doubao-chat to ask Doubao for feedback on this idea, using the quick-send wrapper."

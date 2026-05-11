@@ -5,7 +5,7 @@ Version: V3
 Reusable skill collection for Codex/OpenClaw agents. Current focus:
 
 - `bilibili-all-in-one-2026-04-18-v2`: Bilibili search/download/transcribe/note workflow.
-- `doubao-chat`: Chrome-based Doubao chat skill with an optional CDP smoke-test program.
+- `doubao-chat`: Chrome-based Doubao chat skill with quick text/image send, ChromeDidy-compatible CDP control notes, verification blocker detection, and CDP diagnostics.
 - `scripts/juya-daily`: strict Juya daily-video full flow, built for OpenClaw scheduled agents and local verification.
 
 ## V3 Highlights
@@ -15,6 +15,7 @@ Reusable skill collection for Codex/OpenClaw agents. Current focus:
 - Default runtime output stays under `F:\AIAPP\Xiangmu\MutiAgent\runtime\bilibili-fullflow` on this machine; override with `BILIBILI_FULLFLOW_RUNTIME_ROOT`.
 - Notion publishing creates one new daily page per run by default. It only updates a fixed page when `BILIBILI_DAILY_NOTION_PAGE_ID` is explicitly set.
 - No token or cookie is stored in this repo. Use environment variables or local OpenClaw workspace config.
+- Doubao quick-send uses the user's logged-in headed Chrome session through CDP; it stops on login, CAPTCHA, phone/app confirmation, or risk-control blockers instead of trying to bypass them.
 
 ## Quick Start
 
