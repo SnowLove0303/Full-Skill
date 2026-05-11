@@ -552,9 +552,9 @@ async function main() {
   if (process.argv.includes("--help") || process.argv.includes("-h")) {
     console.log([
       "Usage:",
-      "  node doubao_quick_send.js --prompt \"hello\" [--image path/to/image.png] [--cdp-url http://127.0.0.1:9222] [--wait-ms 10000] [--cooldown-ms 12000]",
+      "  node doubao_quick_send.js --prompt \"hello\" [--image path/to/image.png] [--cdp-url http://127.0.0.1:9222] [--wait-ms 10000] [--cooldown-ms 12000] [--new-chat]",
       "",
-      "Connects to an existing Chrome DevTools endpoint, optionally uploads images, sends a prompt to Doubao, waits 10 seconds by default, then prints JSON.",
+      "Connects to an existing Chrome DevTools endpoint, reuses an existing Doubao chat by default, optionally uploads images, sends a prompt, waits 10 seconds by default, then prints JSON.",
     ].join("\n"));
     return;
   }
@@ -562,7 +562,8 @@ async function main() {
   const cdpUrl = arg("cdp-url", process.env.DOUBAO_CDP_URL || process.env.CHROME_DIDY_CDP_URL || "http://127.0.0.1:9222");
   const doubaoUrl = arg("url", "https://www.doubao.com/chat/");
   const prompt = arg("prompt", "").trim();
-  const reuseCurrentChat = process.argv.includes("--reuse-current-chat");
+  const newChat = process.argv.includes("--new-chat");
+  const reuseCurrentChat = !newChat;
   const waitMs = numberArg("wait-ms", 10000);
   const timeoutMs = numberArg("timeout-ms", 30000);
   const cooldownMs = numberArg("cooldown-ms", Number(process.env.DOUBAO_COOLDOWN_MS || 12000));
@@ -628,6 +629,7 @@ async function main() {
       waitMs,
       cooldownMs,
       cooldownWaitMs,
+      chatMode: reuseCurrentChat ? "reuse-existing-chat" : "new-chat",
       url: page.url(),
       title: pageTitle,
       prompt,

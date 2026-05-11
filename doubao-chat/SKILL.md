@@ -30,12 +30,14 @@ F:\AIAPP\Codex\.codex\skills\doubao-chat\scripts\doubao_quick_send.cmd -Prompt "
 Behavior:
 
 - Connects to an existing Chrome DevTools endpoint.
-- Opens Doubao and starts a new chat by default, so old conversation context does not pollute the quick reply.
+- Reuses an existing Doubao chat by default. It first attaches to an open Doubao chat tab; if none is open, it prefers the last successful chat URL from `scripts\.runtime\doubao-state.json`.
+- Starts a new chat only when explicitly requested with `-NewChat`.
 - Optionally uploads one or more local images before sending the prompt.
 - Uses a local send lock so multiple agents do not operate the same Doubao browser tab concurrently.
 - Uses a default `12000` ms cooldown between sends to reduce rate/risk-control triggers.
 - Records the last working logged-in CDP endpoint in `scripts\.runtime\doubao-state.json` after a successful send.
 - When `-CdpUrl` is omitted, prefers the recorded working endpoint if it is still reachable, then `DOUBAO_CDP_URL`, then `CHROME_DIDY_CDP_URL`.
+- When `-Url` is omitted and `-NewChat` is not set, prefers the recorded last successful Doubao chat URL so future calls keep the same conversation context.
 - Detects login, CAPTCHA, human verification, phone/app checks, and risk-control text before sending; if detected, it stops and reports the blocker.
 - Sends the prompt to the visible chat input.
 - Waits `10000` ms after sending by default.
@@ -48,8 +50,11 @@ Useful options:
 # Wait a different amount of time after sending.
 .\scripts\doubao_quick_send.ps1 -Prompt "hello" -WaitMs 15000
 
-# Continue the currently open Doubao chat instead of starting a fresh chat.
+# Reuse is the default. This flag is kept for old agent prompts and is a no-op unless combined with custom routing.
 .\scripts\doubao_quick_send.ps1 -Prompt "hello" -ReuseCurrentChat
+
+# Force a clean new Doubao chat when old conversation context would be harmful.
+.\scripts\doubao_quick_send.ps1 -Prompt "hello" -NewChat
 
 # Increase or disable the inter-agent send cooldown.
 .\scripts\doubao_quick_send.ps1 -Prompt "hello" -CooldownMs 30000
@@ -102,7 +107,7 @@ Invoke-RestMethod http://127.0.0.1:9222/json/list
 
 4. Use `doubao_quick_send.cmd` or `doubao_quick_send.ps1` as the only normal send path. Do not run independent Playwright scripts that click the same Doubao tab in parallel.
 5. Let the quick-send script manage locking, cooldown, image upload, and blocker detection.
-6. If the agent only needs feedback in the current open conversation, pass `-ReuseCurrentChat`; otherwise allow the default fresh chat.
+6. Reuse the existing Doubao conversation by default, especially when the user is continuing an evaluation thread. Pass `-NewChat` only when old context would pollute the result.
 7. For images, pass local image paths with `-ImagePath`; the script uploads through Doubao's file input and then sends the prompt.
 8. Save `-ReplyOut`, `-BodyOut`, and `-Screenshot` whenever debugging, training another agent, or handling failure.
 
@@ -155,6 +160,8 @@ F:\AIAPP\Codex\.codex\skills\doubao-chat\scripts\doubao_quick_send.cmd `
   -BodyOut "F:\AIAPP\Codex\.codex\skills\doubao-chat\.tmp\doubao-body.txt" `
   -Screenshot "F:\AIAPP\Codex\.codex\skills\doubao-chat\.tmp\doubao.png"
 ```
+
+Add `-NewChat` to the template only when the delegated task requires a context-free answer.
 
 Image command template:
 

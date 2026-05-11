@@ -13,7 +13,8 @@ param(
   [string]$ChromePath = "",
   [switch]$LaunchChrome,
   [switch]$UseDefaultChromeProfile,
-  [switch]$ReuseCurrentChat
+  [switch]$ReuseCurrentChat,
+  [switch]$NewChat
 )
 
 $ErrorActionPreference = "Stop"
@@ -26,6 +27,19 @@ function Read-StateCdpUrl([string]$Path) {
   try {
     $state = Get-Content -LiteralPath $Path -Raw | ConvertFrom-Json
     if ($state.lastGoodCdpUrl) { return [string]$state.lastGoodCdpUrl }
+  } catch {
+    return ""
+  }
+  return ""
+}
+
+function Read-StateLastUrl([string]$Path) {
+  if (-not (Test-Path $Path)) { return "" }
+  try {
+    $state = Get-Content -LiteralPath $Path -Raw | ConvertFrom-Json
+    if ($state.lastUrl -and ([string]$state.lastUrl) -match '^https://www\.doubao\.com/chat/') {
+      return [string]$state.lastUrl
+    }
   } catch {
     return ""
   }
@@ -63,6 +77,13 @@ if (-not $CdpUrl) {
   }
   if (-not $CdpUrl) {
     $CdpUrl = "http://127.0.0.1:9222"
+  }
+}
+
+if (-not $PSBoundParameters.ContainsKey("Url") -and -not $NewChat) {
+  $stateLastUrl = Read-StateLastUrl $statePath
+  if ($stateLastUrl) {
+    $Url = $stateLastUrl
   }
 }
 
@@ -184,6 +205,7 @@ foreach ($image in $ImagePath) {
   if ($image) { $nodeArgs += @("--image", $image) }
 }
 if ($ReuseCurrentChat) { $nodeArgs += @("--reuse-current-chat") }
+if ($NewChat) { $nodeArgs += @("--new-chat") }
 
 try {
   & $node.Source @nodeArgs
