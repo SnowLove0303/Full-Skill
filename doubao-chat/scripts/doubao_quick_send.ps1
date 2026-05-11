@@ -10,7 +10,9 @@ param(
   [string[]]$ImagePath = @(),
   [int]$CooldownMs = 12000,
   [string]$Url = "https://www.doubao.com/chat/",
+  [string]$ChromePath = "",
   [switch]$LaunchChrome,
+  [switch]$UseDefaultChromeProfile,
   [switch]$ReuseCurrentChat
 )
 
@@ -41,14 +43,34 @@ function Test-Cdp([string]$Url) {
   }
 }
 
-function Find-Chrome {
+function Find-Chrome([string]$Explicit) {
+  if ($Explicit -and (Test-Path $Explicit)) { return $Explicit }
+
   $cmd = Get-Command chrome.exe -ErrorAction SilentlyContinue
   if ($cmd) { return $cmd.Source }
 
+  $registryChrome = @()
+  $registryKeys = @(
+    "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\chrome.exe",
+    "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\chrome.exe",
+    "HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\App Paths\chrome.exe"
+  )
+  foreach ($key in $registryKeys) {
+    if (Test-Path $key) {
+      $value = (Get-Item $key).GetValue("")
+      if ($value) { $registryChrome += $value }
+    }
+  }
+
   $candidates = @(
+    $env:DOUBAO_CHROME_PATH,
+    $env:CHROME_DIDY_CHROME_PATH,
+    $env:CHROME_PATH
+  ) + $registryChrome + @(
     "$env:ProgramFiles\Google\Chrome\Application\chrome.exe",
     "${env:ProgramFiles(x86)}\Google\Chrome\Application\chrome.exe",
-    "$env:LOCALAPPDATA\Google\Chrome\Application\chrome.exe"
+    "$env:LOCALAPPDATA\Google\Chrome\Application\chrome.exe",
+    "E:\MorenAnzhuangLujing\Chrome\Chrome\Application\chrome.exe"
   )
 
   foreach ($candidate in $candidates) {
@@ -63,21 +85,31 @@ if (-not (Test-Cdp $CdpUrl)) {
     throw "Chrome DevTools endpoint is not reachable at $CdpUrl. Start Chrome with remote debugging, set DOUBAO_CDP_URL, or rerun with -LaunchChrome."
   }
 
-  $chrome = Find-Chrome
+  $chrome = Find-Chrome $ChromePath
   if (-not $chrome) { throw "chrome.exe was not found. Install Chrome or put chrome.exe on PATH." }
 
-  $scriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
-  $profileDir = Join-Path $scriptRoot ".runtime\chrome-profile"
-  New-Item -ItemType Directory -Force -Path $profileDir | Out-Null
-
   $port = Get-DebugPort $CdpUrl
-  Start-Process -FilePath $chrome -ArgumentList @(
+  $chromeArgs = @(
     "--remote-debugging-port=$port",
-    "--user-data-dir=$profileDir",
     "--no-first-run",
     "--disable-background-mode",
     $Url
-  ) | Out-Null
+  )
+
+  if (-not $UseDefaultChromeProfile) {
+    $scriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
+    $profileDir = Join-Path $scriptRoot ".runtime\chrome-profile"
+    New-Item -ItemType Directory -Force -Path $profileDir | Out-Null
+    $chromeArgs = @(
+      "--remote-debugging-port=$port",
+      "--user-data-dir=$profileDir",
+      "--no-first-run",
+      "--disable-background-mode",
+      $Url
+    )
+  }
+
+  Start-Process -FilePath $chrome -ArgumentList $chromeArgs | Out-Null
 
   $deadline = (Get-Date).AddSeconds(15)
   while ((Get-Date) -lt $deadline) {
@@ -86,6 +118,9 @@ if (-not (Test-Cdp $CdpUrl)) {
   }
 
   if (-not (Test-Cdp $CdpUrl)) {
+    if ($UseDefaultChromeProfile) {
+      throw "Started Chrome with the default profile, but DevTools did not become reachable at $CdpUrl. Chrome 136+ does not allow remote debugging on the default user data directory; use the persistent controlled profile from -LaunchChrome and log into Doubao there once."
+    }
     throw "Started Chrome, but DevTools endpoint did not become reachable at $CdpUrl."
   }
 }

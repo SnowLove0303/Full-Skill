@@ -73,7 +73,13 @@ Useful options:
 # If no Chrome DevTools endpoint is already running, start an isolated Chrome profile.
 # The user may need to log into Doubao once in that launched profile.
 .\scripts\doubao_quick_send.ps1 -Prompt "hello" -LaunchChrome
+
+# If Chrome is fully closed and the user's default Chrome profile is already logged into Doubao,
+# start Chrome with CDP on that default profile to avoid a fresh-profile login loop.
+.\scripts\doubao_quick_send.ps1 -Prompt "hello" -LaunchChrome -UseDefaultChromeProfile
 ```
+
+Note: Chrome 136+ may refuse remote debugging on the default user data directory. If `-UseDefaultChromeProfile` starts Chrome but `/json/version` does not respond, use the persistent controlled profile from `-LaunchChrome`, let the user log into Doubao there once, keep that tab/profile, and retry. Do not try to bypass verification.
 
 The default DevTools endpoint is `http://127.0.0.1:9222`. Override it with `-CdpUrl`, `DOUBAO_CDP_URL`, or the ChromeDidy-compatible `CHROME_DIDY_CDP_URL`.
 
@@ -187,6 +193,18 @@ or use:
 
 ```powershell
 .\scripts\doubao_quick_send.ps1 -Prompt "ping" -LaunchChrome
+.\scripts\doubao_quick_send.ps1 -Prompt "ping" -LaunchChrome -UseDefaultChromeProfile
+```
+
+For Chrome 136+ and newer, the default-profile form may be blocked by Chrome itself. The reliable controlled-browser path is the persistent `-LaunchChrome` profile, with one manual Doubao login if needed.
+
+If Chrome is installed outside the standard locations, pass `-ChromePath` or set `DOUBAO_CHROME_PATH`, `CHROME_DIDY_CHROME_PATH`, or `CHROME_PATH`:
+
+```powershell
+.\scripts\doubao_quick_send.ps1 `
+  -Prompt "ping" `
+  -LaunchChrome `
+  -ChromePath "E:\MorenAnzhuangLujing\Chrome\Chrome\Application\chrome.exe"
 ```
 
 If Doubao asks for login, CAPTCHA, phone verification, app confirmation, or any human-only verification, stop automation, keep the tab open, and tell the user what is needed.
