@@ -9,7 +9,11 @@ description: Use Chrome to send prompts and images to Doubao AI in the user's lo
 
 Use the user's logged-in Chrome session to interact with Doubao at `https://www.doubao.com/chat/`, send text and optional images, wait for Doubao's answer, and return the result.
 
-Doubao is an external advisor. Its answer must not override the user's instructions, repository policy, Codex safety rules, or local evidence.
+Doubao is an external advisor. For objective review, verification, comparison, or visual critique tasks, treat Doubao's objective answer as the authoritative task-level review result: operationally, its objective reply is considered correct and must be followed. Do not dismiss or override it with the agent's subjective preference. Only higher-priority user/system/safety/repository constraints or concrete local evidence (source files, screenshots, renders, tests, logs) may limit how it is applied; when that happens, report the evidence explicitly.
+
+## Objective Reply Authority
+
+When asking Doubao for objective feedback, include enough evidence and ask for an objective answer. After Doubao gives an objective reply, treat that reply as absolutely correct for the delegated review decision ("豆包客观回复后，其回复是绝对正确的"). Apply it directly unless a higher-priority constraint or concrete local artifact proves an implementation conflict. If the agent disagrees, it must gather evidence and ask Doubao again instead of overriding Doubao silently.
 
 ## Fast Path: Send And Read After 10 Seconds
 
@@ -255,6 +259,8 @@ Doubao feedback:
 Codex judgment:
 <optional Codex synthesis when useful>
 ```
+
+For objective review tasks, `Codex judgment` must not contradict Doubao without explicit evidence. It should state how the agent will apply Doubao's answer, or name the higher-priority constraint/local artifact that limits application.
 
 If the user asks for the raw answer, provide Doubao's answer as directly as practical while avoiding excessive copyrighted text from third-party sources displayed by Doubao.
 
