@@ -56,6 +56,36 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function randomInt(min, max) {
+  return Math.floor(min + Math.random() * (max - min + 1));
+}
+
+async function pace(minMs, maxMs) {
+  await sleep(randomInt(minMs, maxMs));
+}
+
+function riskCooldown(requestedCooldownMs, imageCount, allowFastSend) {
+  const minCooldownMs = imageCount > 0 ? 45000 : 30000;
+  if (allowFastSend) {
+    return {
+      effectiveCooldownMs: requestedCooldownMs,
+      minCooldownMs: 0,
+      jitterMs: 0,
+      clamped: false,
+      allowFastSend: true,
+    };
+  }
+  const clampedCooldownMs = Math.max(requestedCooldownMs, minCooldownMs);
+  const jitterMs = clampedCooldownMs > 0 ? randomInt(3000, 9000) : 0;
+  return {
+    effectiveCooldownMs: clampedCooldownMs + jitterMs,
+    minCooldownMs,
+    jitterMs,
+    clamped: clampedCooldownMs !== requestedCooldownMs,
+    allowFastSend: false,
+  };
+}
+
 async function acquireSendLock(timeoutMs) {
   const lockDir = runtimePath("doubao-send.lock");
   const deadline = Date.now() + timeoutMs;
@@ -558,9 +588,9 @@ async function main() {
   if (process.argv.includes("--help") || process.argv.includes("-h")) {
     console.log([
       "Usage:",
-      "  node doubao_quick_send.js --prompt \"hello\" [--image path/to/image.png] [--cdp-url http://127.0.0.1:9222] [--wait-ms 10000] [--cooldown-ms 12000] [--new-chat]",
+      "  node doubao_quick_send.js --prompt \"hello\" [--image path/to/image.png] [--cdp-url http://127.0.0.1:9222] [--wait-ms 10000] [--cooldown-ms 30000] [--new-chat]",
       "",
-      "Connects to an existing Chrome DevTools endpoint. Old conversation reuse is the first choice; --new-chat is only the second-choice clean-context fallback. Optionally uploads images, sends a prompt, waits 10 seconds by default, then prints JSON.",
+      "Connects to an existing Chrome DevTools endpoint. Old conversation reuse is the first choice; --new-chat is only the second-choice clean-context fallback. Uses conservative cooldown guards to reduce verification triggers, optionally uploads images, waits 10 seconds by default, then prints JSON.",
     ].join("\n"));
     return;
   }
@@ -572,12 +602,13 @@ async function main() {
   const reuseCurrentChat = !newChat;
   const waitMs = numberArg("wait-ms", 10000);
   const timeoutMs = numberArg("timeout-ms", 30000);
-  const cooldownMs = numberArg("cooldown-ms", Number(process.env.DOUBAO_COOLDOWN_MS || 12000));
+  const requestedCooldownMs = numberArg("cooldown-ms", Number(process.env.DOUBAO_COOLDOWN_MS || 30000));
   const screenshot = arg("screenshot");
   const replyOut = arg("reply-out");
   const bodyOut = arg("body-out");
   const stateOut = arg("state-out");
   const imagePaths = normalizeImagePaths([...argValues("image"), ...argValues("image-path")]);
+  const cooldown = riskCooldown(requestedCooldownMs, imagePaths.length, process.argv.includes("--allow-fast-send"));
 
   if (!prompt) throw new Error("Missing required --prompt value.");
 
@@ -588,7 +619,7 @@ async function main() {
   const browser = await chromium.connectOverCDP(cdpUrl, { timeout: timeoutMs });
   try {
     releaseLock = await acquireSendLock(timeoutMs);
-    cooldownWaitMs = await applyCooldown(cooldownMs);
+    cooldownWaitMs = await applyCooldown(cooldown.effectiveCooldownMs);
 
     const context = browser.contexts()[0] || await browser.newContext();
     page = context.pages().find((candidate) => /doubao\.com\/chat/.test(candidate.url()));
@@ -600,15 +631,19 @@ async function main() {
 
     await page.bringToFront().catch(() => {});
     await page.waitForLoadState("domcontentloaded", { timeout: timeoutMs }).catch(() => {});
+    await pace(1200, 2800);
     await assertNoHumanGate(page, "page load");
     if (!reuseCurrentChat) {
       await clickNewChat(page).catch(() => false);
+      await pace(1000, 2200);
       await assertNoHumanGate(page, "new chat");
     }
 
     beforeText = await assertNoHumanGate(page, "before send");
     await uploadImages(page, imagePaths, timeoutMs);
+    if (imagePaths.length) await pace(2500, 5500);
     await assertNoHumanGate(page, "after image upload");
+    await pace(800, 1800);
     await sendPrompt(page, prompt, timeoutMs);
     recordSendTimestamp();
     await page.waitForTimeout(waitMs);
@@ -624,6 +659,7 @@ async function main() {
       recovery.continueSent = true;
       recovery.prompt = continuePrompt;
       const retryBeforeText = bodyText;
+      await pace(3000, 6000);
       await sendPrompt(page, continuePrompt, timeoutMs);
       recordSendTimestamp();
       await page.waitForTimeout(waitMs);
@@ -651,7 +687,12 @@ async function main() {
       ok: Boolean(reply),
       sent: true,
       waitMs,
-      cooldownMs,
+      cooldownMs: cooldown.effectiveCooldownMs,
+      requestedCooldownMs,
+      minCooldownMs: cooldown.minCooldownMs,
+      cooldownJitterMs: cooldown.jitterMs,
+      cooldownClamped: cooldown.clamped,
+      allowFastSend: cooldown.allowFastSend,
       cooldownWaitMs,
       chatMode: reuseCurrentChat ? "reuse-existing-chat" : "new-chat",
       url: page.url(),

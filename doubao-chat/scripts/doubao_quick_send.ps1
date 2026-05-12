@@ -8,13 +8,14 @@ param(
   [string]$ReplyOut = "",
   [string]$BodyOut = "",
   [string[]]$ImagePath = @(),
-  [int]$CooldownMs = 12000,
+  [int]$CooldownMs = 30000,
   [string]$Url = "https://www.doubao.com/chat/",
   [string]$ChromePath = "",
   [switch]$LaunchChrome,
   [switch]$UseDefaultChromeProfile,
   [switch]$ReuseCurrentChat,
-  [switch]$NewChat
+  [switch]$NewChat,
+  [switch]$AllowFastSend
 )
 
 $ErrorActionPreference = "Stop"
@@ -206,6 +207,7 @@ foreach ($image in $ImagePath) {
 }
 if ($ReuseCurrentChat) { $nodeArgs += @("--reuse-current-chat") }
 if ($NewChat) { $nodeArgs += @("--new-chat") }
+if ($AllowFastSend) { $nodeArgs += @("--allow-fast-send") }
 
 try {
   & $node.Source @nodeArgs

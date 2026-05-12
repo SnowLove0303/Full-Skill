@@ -49,7 +49,7 @@ Behavior:
 - Treats a new chat as the second choice. Start a new chat only when explicitly requested with `-NewChat` or when old context is unusable.
 - Optionally uploads one or more local images before sending the prompt.
 - Uses a local send lock so multiple agents do not operate the same Doubao browser tab concurrently.
-- Uses a default `12000` ms cooldown between sends to reduce rate/risk-control triggers.
+- Uses a default `30000` ms cooldown guard between sends. Normal sends are clamped to at least 30 seconds plus 3-9 seconds of jitter; image sends are clamped to at least 45 seconds plus jitter.
 - Records the last working logged-in CDP endpoint in `scripts\.runtime\doubao-state.json` after a successful send.
 - When `-CdpUrl` is omitted, prefers the recorded working endpoint if it is still reachable, then `DOUBAO_CDP_URL`, then `CHROME_DIDY_CDP_URL`.
 - When `-Url` is omitted and `-NewChat` is not set, prefers the recorded last successful Doubao chat URL so future calls keep the same conversation context.
@@ -58,7 +58,7 @@ Behavior:
 - Waits `10000` ms after sending by default.
 - Extracts the newest visible reply from the page.
 - If the newest reply says generation hit a small problem and asks to try again, automatically sends `继续` once, waits again, and returns the retried reply.
-- Prints JSON with `ok`, `sent`, `prompt`, `images`, `reply`, `url`, `blocker`, and optional evidence paths.
+- Prints JSON with `ok`, `sent`, `prompt`, `images`, `reply`, `url`, cooldown details, `blocker`, and optional evidence paths.
 
 Useful options:
 
@@ -72,9 +72,12 @@ Useful options:
 # Second choice only: force a clean new Doubao chat when old conversation context would be harmful.
 .\scripts\doubao_quick_send.ps1 -Prompt "hello" -NewChat
 
-# Increase or disable the inter-agent send cooldown.
-.\scripts\doubao_quick_send.ps1 -Prompt "hello" -CooldownMs 30000
-.\scripts\doubao_quick_send.ps1 -Prompt "hello" -CooldownMs 0
+# Increase the inter-agent send cooldown for batches or repeated reviews.
+.\scripts\doubao_quick_send.ps1 -Prompt "hello" -CooldownMs 60000
+
+# Diagnostic only: allow a shorter cooldown for one manual test.
+# Do not use this for delegated agents or batches.
+.\scripts\doubao_quick_send.ps1 -Prompt "hello" -CooldownMs 5000 -AllowFastSend
 
 # Upload one local image, then send the prompt.
 .\scripts\doubao_quick_send.ps1 `
@@ -171,7 +174,7 @@ F:\AIAPP\Codex\.codex\skills\doubao-chat\scripts\doubao_quick_send.cmd `
   -Prompt "<message for Doubao>" `
   -CdpUrl "http://127.0.0.1:9222" `
   -WaitMs 10000 `
-  -CooldownMs 12000 `
+  -CooldownMs 30000 `
   -ReplyOut "F:\AIAPP\Codex\.codex\skills\doubao-chat\.tmp\doubao-reply.txt" `
   -BodyOut "F:\AIAPP\Codex\.codex\skills\doubao-chat\.tmp\doubao-body.txt" `
   -Screenshot "F:\AIAPP\Codex\.codex\skills\doubao-chat\.tmp\doubao.png"
@@ -187,7 +190,7 @@ F:\AIAPP\Codex\.codex\skills\doubao-chat\scripts\doubao_quick_send.cmd `
   -ImagePath "F:\path\image.png" `
   -CdpUrl "http://127.0.0.1:9222" `
   -WaitMs 10000 `
-  -CooldownMs 12000 `
+  -CooldownMs 45000 `
   -ReplyOut "F:\AIAPP\Codex\.codex\skills\doubao-chat\.tmp\doubao-image-reply.txt" `
   -BodyOut "F:\AIAPP\Codex\.codex\skills\doubao-chat\.tmp\doubao-image-body.txt" `
   -Screenshot "F:\AIAPP\Codex\.codex\skills\doubao-chat\.tmp\doubao-image.png"
@@ -200,9 +203,12 @@ This skill must not bypass CAPTCHA or human verification. It should reduce accid
 - Use one shared, visible, logged-in Chrome profile.
 - Avoid repeated launch/login cycles. Reusing a stable browser session is less suspicious than creating many temporary profiles.
 - Avoid parallel sends. The quick-send script creates `.runtime\doubao-send.lock` to serialize agents.
-- Keep a gap between sends. The quick-send script defaults to `-CooldownMs 12000`; increase this for batches.
+- Keep a real gap between sends. The quick-send script defaults to `-CooldownMs 30000`; normal sends are clamped to at least 30 seconds plus 3-9 seconds of jitter, and image sends are clamped to at least 45 seconds plus jitter.
+- Do not use `-CooldownMs 0` in normal agent workflows. It is ignored by the conservative guard unless `-AllowFastSend` is explicitly set.
+- Reserve `-AllowFastSend` for one manual diagnostic test after the operator has confirmed the browser state. Never use it for delegated agents, loops, batches, or image-review workflows.
 - Avoid rapid exploratory clicking. Agents should call the wrapper script instead of custom click loops.
 - Avoid sending very large batches or many images at once; split work into small, user-meaningful requests.
+- For repeated review batches, use `-CooldownMs 60000` or higher and keep old conversation reuse enabled.
 - Keep the Doubao tab open after user login or manual verification, then retry through the wrapper.
 - If the page asks for login, CAPTCHA, phone verification, app confirmation, slider verification, or risk-control confirmation, stop automation immediately. Capture evidence and tell the user what manual action is needed.
 - For delegated agents, run `chrome_probe.ps1` before sending and compare the selected tab URL/title with the visible browser. If screenshots do not match the user's open Doubao tab, reconnect to the correct CDP endpoint instead of launching another browser.
