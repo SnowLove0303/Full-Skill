@@ -47,6 +47,11 @@ function Read-StateLastUrl([string]$Path) {
   return ""
 }
 
+function Normalize-CdpUrl([string]$Url) {
+  if (-not $Url) { return "" }
+  return ([string]$Url).Trim().TrimEnd("/")
+}
+
 function Get-DebugPort([string]$Url) {
   $uri = [Uri]$Url
   if ($uri.Port -le 0) { return 9222 }
@@ -62,23 +67,67 @@ function Test-Cdp([string]$Url) {
   }
 }
 
+function Get-CdpTabs([string]$Url) {
+  try {
+    $tabs = Invoke-RestMethod -Uri "$Url/json/list" -TimeoutSec 2
+    if ($null -eq $tabs) { return @() }
+    return @($tabs)
+  } catch {
+    return @()
+  }
+}
+
+function Test-DoubaoChatCdp([string]$Url) {
+  if (-not (Test-Cdp $Url)) { return $false }
+  foreach ($tab in (Get-CdpTabs $Url)) {
+    $tabUrl = [string]$tab.url
+    if ($tabUrl -match '^https://www\.doubao\.com/chat') {
+      return $true
+    }
+  }
+  return $false
+}
+
+function Select-FirstReachableCdp([string[]]$Urls) {
+  $seen = @{}
+  foreach ($candidate in $Urls) {
+    $normalized = Normalize-CdpUrl $candidate
+    if (-not $normalized -or $seen.ContainsKey($normalized)) { continue }
+    $seen[$normalized] = $true
+    if (Test-Cdp $normalized) { return $normalized }
+  }
+  return ""
+}
+
+function Select-LoggedInCdp([string[]]$Urls) {
+  $seen = @{}
+  foreach ($candidate in $Urls) {
+    $normalized = Normalize-CdpUrl $candidate
+    if (-not $normalized -or $seen.ContainsKey($normalized)) { continue }
+    $seen[$normalized] = $true
+    if (Test-DoubaoChatCdp $normalized) { return $normalized }
+  }
+  return ""
+}
+
 if (-not $CdpUrl) {
   $stateCdpUrl = Read-StateCdpUrl $statePath
   $candidateCdpUrls = @(
     $stateCdpUrl,
     $env:DOUBAO_CDP_URL,
     $env:CHROME_DIDY_CDP_URL,
-    "http://127.0.0.1:9222"
+    "http://127.0.0.1:9222",
+    "http://127.0.0.1:9223",
+    "http://127.0.0.1:9224",
+    "http://127.0.0.1:9225"
   )
-  foreach ($candidateCdpUrl in $candidateCdpUrls) {
-    if ($candidateCdpUrl -and (Test-Cdp $candidateCdpUrl)) {
-      $CdpUrl = $candidateCdpUrl
-      break
-    }
-  }
+  $CdpUrl = Select-LoggedInCdp $candidateCdpUrls
+  if (-not $CdpUrl) { $CdpUrl = Select-FirstReachableCdp $candidateCdpUrls }
   if (-not $CdpUrl) {
     $CdpUrl = "http://127.0.0.1:9222"
   }
+} else {
+  $CdpUrl = Normalize-CdpUrl $CdpUrl
 }
 
 if (-not $PSBoundParameters.ContainsKey("Url") -and -not $NewChat) {

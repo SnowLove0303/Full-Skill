@@ -51,7 +51,7 @@ Behavior:
 - Uses a local send lock so multiple agents do not operate the same Doubao browser tab concurrently.
 - Uses a default `30000` ms cooldown guard between sends. Normal sends are clamped to at least 30 seconds plus 3-9 seconds of jitter; image sends are clamped to at least 45 seconds plus jitter.
 - Records the last working logged-in CDP endpoint in `scripts\.runtime\doubao-state.json` after a successful send.
-- When `-CdpUrl` is omitted, prefers the recorded working endpoint if it is still reachable, then `DOUBAO_CDP_URL`, then `CHROME_DIDY_CDP_URL`.
+- When `-CdpUrl` is omitted, first searches known endpoints for an existing Doubao chat tab: recorded last good endpoint, `DOUBAO_CDP_URL`, `CHROME_DIDY_CDP_URL`, then ports `9222`-`9225`. Only if no Doubao chat tab is found does it fall back to the first reachable CDP endpoint.
 - When `-Url` is omitted and `-NewChat` is not set, prefers the recorded last successful Doubao chat URL so future calls keep the same conversation context.
 - Detects login, CAPTCHA, human verification, phone/app checks, and risk-control text before sending; if detected, it stops and reports the blocker.
 - Sends the prompt to the visible chat input.
@@ -109,14 +109,14 @@ Note: Chrome 136+ may refuse remote debugging on the default user data directory
 
 The default DevTools endpoint is `http://127.0.0.1:9222`. Override it with `-CdpUrl`, `DOUBAO_CDP_URL`, or the ChromeDidy-compatible `CHROME_DIDY_CDP_URL`.
 
-After a successful send, agents can omit `-CdpUrl`; the wrapper will prefer the recorded logged-in endpoint from `scripts\.runtime\doubao-state.json` when that endpoint is still alive, even if a stale ChromeDidy environment variable points elsewhere.
+After a successful send, agents can omit `-CdpUrl`; the wrapper will probe the recorded endpoint, `DOUBAO_CDP_URL`, `CHROME_DIDY_CDP_URL`, and ports `9222`-`9225`, then prefer the first live endpoint that already has a `https://www.doubao.com/chat` tab. This keeps agents on the logged-in browser before they fall back to a generic reachable CDP endpoint.
 
 ## Browser Control Method For Other Agents
 
 Other agents must use the same browser-control path instead of inventing their own Doubao automation.
 
 1. Prefer the already-open, headed Chrome profile that the user has logged into. Do not use headless Chrome for Doubao.
-2. Connect through Chrome DevTools Protocol at `http://127.0.0.1:9222`.
+2. Connect through Chrome DevTools Protocol. Prefer the endpoint that already has a Doubao chat tab or the recorded `lastGoodCdpUrl`; do not choose by port number alone when several CDP ports are alive.
 3. Check the endpoint first:
 
 ```powershell
