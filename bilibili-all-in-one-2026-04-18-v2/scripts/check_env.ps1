@@ -23,6 +23,10 @@ $checks = [ordered]@{
     Python = [bool](Get-Command python -ErrorAction SilentlyContinue)
     VenvPython = (Test-Path $VenvPython)
     OpenCLI = ($OpencliCmd -and (Test-Path $OpencliCmd))
+    FFmpeg = [bool](Get-Command ffmpeg -ErrorAction SilentlyContinue)
+    BBDown = [bool]((Get-Command BBDown -ErrorAction SilentlyContinue) -or (Get-Command BBDown.exe -ErrorAction SilentlyContinue) -or (Get-Command bbdown -ErrorAction SilentlyContinue))
+    Yutto = [bool](Get-Command yutto -ErrorAction SilentlyContinue)
+    YtDlpCli = [bool]((Get-Command yt-dlp -ErrorAction SilentlyContinue) -or (Get-Command yt-dlp.exe -ErrorAction SilentlyContinue))
     OutputDir = (Test-Path (Join-Path $InstallRoot "downloads\bilibili"))
     WhisperDownloadRoot = (Test-Path (Join-Path $InstallRoot "tool-caches\huggingface\bilibili-all-in-one\models"))
 }
@@ -38,6 +42,9 @@ import importlib.util
 for name in ["yt_dlp", "imageio_ffmpeg", "faster_whisper"]:
     print(f"[{'OK' if importlib.util.find_spec(name) else 'MISS'}] python:{name}")
 '@ | & $VenvPython -
+
+    Write-Host "[Info] Expander download backends"
+    & $VenvPython (Join-Path $SkillRoot "scripts\bilibili-expander\cli.py") backends
 }
 
 if ($OpencliCmd -and (Test-Path $OpencliCmd)) {

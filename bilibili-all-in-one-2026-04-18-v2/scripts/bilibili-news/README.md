@@ -1,11 +1,14 @@
-# Bilibili AI早报自动生成器
+# Bilibili AI早报模块
+
+> 本模块已整合进 `bilibili-all-in-one`，不再作为独立 Skill 暴露。
+> 推荐入口：`..\..\SKILL.md` 中的“功能一：B站早报”。
 
 ## 快速开始
 
 ### 方法 1: 命令行运行
 
 ```bash
-cd F:\openclaw1\.openclaw\workspace\skills\bilibili-news
+cd F:\AIAPP\Codex\.codex\skills\bilibili-all-in-one-2026-04-18-v2\scripts\bilibili-news
 
 # 基本用法 - 获取 UP 主最新视频
 python -m bilibili_news 285286947 橘郡Juya

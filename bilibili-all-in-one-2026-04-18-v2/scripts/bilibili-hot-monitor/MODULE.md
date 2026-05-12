@@ -1,10 +1,7 @@
----
-name: bilibili-monitor
-description: 生成B站热门视频日报并发送邮件。触发词：B站热门、bilibili日报、视频日报、热门视频
-metadata: {"openclaw":{"emoji":"📺","requires":{"bins":["python3"]},"os":["darwin","linux","win32"]}}
----
+# B站热门视频日报模块
 
-# B站热门视频日报
+> 本文件是 `bilibili-all-in-one` 的内部模块文档，不再是独立 Codex Skill。
+> 唯一技能入口：`../../SKILL.md`。
 
 ## 🔒 安全说明
 
