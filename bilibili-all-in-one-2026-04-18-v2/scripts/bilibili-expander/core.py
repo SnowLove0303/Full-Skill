@@ -35,6 +35,7 @@ if str(OPENCLI_SCRIPTS) not in sys.path:
     sys.path.insert(0, str(OPENCLI_SCRIPTS))
 
 from bilibili_utils import extract_bvid, get_user_videos, normalize_video_info, search_videos  # noqa: E402
+from chrome_cookie import cookie_value, load_cookie_header, mask_cookie_header  # noqa: E402
 
 
 DEFAULT_OUTPUT = Path(os.environ.get("BILIBILI_OUTPUT_DIR", str(Path.home() / "bilibili-ai-news")))
@@ -62,15 +63,29 @@ def now_slug() -> str:
     return datetime.now().strftime("%Y%m%d-%H%M%S")
 
 
+def resolve_bilibili_cookie() -> str:
+    try:
+        return load_cookie_header()
+    except Exception:
+        return os.environ.get("BILIBILI_COOKIE", "")
+
+
+def bilibili_headers(*, referer: str = "https://www.bilibili.com/", accept: str = "application/json,text/plain,*/*") -> dict[str, str]:
+    headers = {
+        "User-Agent": "Mozilla/5.0",
+        "Referer": referer,
+        "Accept": accept,
+    }
+    cookie = resolve_bilibili_cookie()
+    if cookie:
+        headers["Cookie"] = cookie
+    return headers
+
+
 def http_json(url: str, *, referer: str = "https://www.bilibili.com/", timeout: int = 30) -> dict[str, Any]:
     req = urllib.request.Request(
         url,
-        headers={
-            "User-Agent": "Mozilla/5.0",
-            "Referer": referer,
-            "Accept": "application/json,text/plain,*/*",
-            "Cookie": os.environ.get("BILIBILI_COOKIE", ""),
-        },
+        headers=bilibili_headers(referer=referer),
     )
     with urllib.request.urlopen(req, timeout=timeout) as resp:
         return json.loads(resp.read().decode("utf-8", errors="replace"))
@@ -79,11 +94,7 @@ def http_json(url: str, *, referer: str = "https://www.bilibili.com/", timeout: 
 def http_bytes(url: str, *, referer: str = "https://www.bilibili.com/", timeout: int = 30) -> bytes:
     req = urllib.request.Request(
         url,
-        headers={
-            "User-Agent": "Mozilla/5.0",
-            "Referer": referer,
-            "Cookie": os.environ.get("BILIBILI_COOKIE", ""),
-        },
+        headers=bilibili_headers(referer=referer, accept="*/*"),
     )
     with urllib.request.urlopen(req, timeout=timeout) as resp:
         return resp.read()
@@ -258,34 +269,64 @@ def available_download_backends() -> dict[str, str]:
     return backends
 
 
+def masked_command(command: list[str]) -> list[str]:
+    masked = []
+    skip_next = False
+    for idx, item in enumerate(command):
+        if skip_next:
+            skip_next = False
+            continue
+        if item in {"--cookie", "--sessdata", "--sess-data", "--add-header", "-c"} and idx + 1 < len(command):
+            masked.append(item)
+            next_item = command[idx + 1]
+            if item == "--add-header" and next_item.casefold().startswith("cookie:"):
+                masked.append("Cookie: " + mask_cookie_header(next_item.split(":", 1)[1].strip()))
+            else:
+                masked.append(mask_cookie_header(next_item) if item == "--cookie" else "<masked>")
+            skip_next = True
+        else:
+            masked.append(item)
+    return masked
+
+
 def download_with_backend(bvid_or_url: str, output_dir: Path, backend: str = "auto") -> dict[str, Any]:
     bvid = extract_bvid(bvid_or_url)
     output_dir.mkdir(parents=True, exist_ok=True)
     url = f"https://www.bilibili.com/video/{bvid}/"
     backends = available_download_backends()
+    cookie = resolve_bilibili_cookie()
+    sessdata = cookie_value(cookie, "SESSDATA") if cookie else ""
 
     order = [backend] if backend != "auto" else ["bbdown", "yutto", "yt-dlp", "yt-dlp-python"]
     attempts = []
     for item in order:
         if item == "bbdown" and backends.get("bbdown"):
             cmd = [backends["bbdown"], url, "--work-dir", str(output_dir)]
+            if cookie:
+                cmd.extend(["--cookie", cookie])
         elif item == "yutto" and backends.get("yutto"):
             cmd = [backends["yutto"], url, "-d", str(output_dir)]
+            if sessdata:
+                cmd.extend(["-c", sessdata])
         elif item == "yt-dlp" and backends.get("yt-dlp"):
             cmd = [backends["yt-dlp"], "-f", "ba/bestaudio/best", "--no-playlist", "-o", str(output_dir / f"{bvid}_%(title).80s.%(ext)s"), url]
+            if cookie:
+                cmd[1:1] = ["--add-header", f"Cookie: {cookie}"]
         elif item == "yt-dlp-python":
             cmd = [sys.executable, "-m", "yt_dlp", "-f", "ba/bestaudio/best", "--no-playlist", "-o", str(output_dir / f"{bvid}_%(title).80s.%(ext)s"), url]
+            if cookie:
+                cmd[3:3] = ["--add-header", f"Cookie: {cookie}"]
         else:
             continue
         try:
             result = run_command(cmd, timeout=1200)
         except Exception as exc:
-            attempts.append({"backend": item, "ok": False, "error": str(exc), "command": cmd})
+            attempts.append({"backend": item, "ok": False, "error": str(exc), "command": masked_command(cmd)})
             continue
-        attempts.append({"backend": item, "ok": result.ok, "returncode": result.returncode, "stderr": result.stderr[-1000:], "command": cmd})
+        attempts.append({"backend": item, "ok": result.ok, "returncode": result.returncode, "stderr": result.stderr[-1000:], "command": masked_command(cmd)})
         if result.ok:
-            return {"status": "success", "bvid": bvid, "backend": item, "attempts": attempts}
-    return {"status": "failed", "bvid": bvid, "attempts": attempts}
+            return {"status": "success", "bvid": bvid, "backend": item, "used_cookie": bool(cookie), "attempts": attempts}
+    return {"status": "failed", "bvid": bvid, "used_cookie": bool(cookie), "attempts": attempts}
 
 
 def find_local_media(bvid: str, output_dir: Path) -> Path | None:

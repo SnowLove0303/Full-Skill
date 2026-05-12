@@ -8,6 +8,13 @@ import json
 import sys
 from pathlib import Path
 
+from chrome_cookie import (
+    DEFAULT_COOKIE_STATE,
+    DEFAULT_ENV_FILE,
+    cookie_status,
+    export_cookie_from_chrome,
+    launch_chrome_for_login,
+)
 from core import (
     DEFAULT_OUTPUT,
     available_download_backends,
@@ -85,6 +92,43 @@ def cmd_download(args: argparse.Namespace) -> int:
 def cmd_backends(args: argparse.Namespace) -> int:
     print_json(available_download_backends())
     return 0
+
+
+def cmd_cookie_status(args: argparse.Namespace) -> int:
+    print_json(cookie_status(state_path=Path(args.state), validate=args.validate))
+    return 0
+
+
+def cmd_cookie_from_chrome(args: argparse.Namespace) -> int:
+    result = export_cookie_from_chrome(
+        cdp_urls=args.cdp_url or None,
+        state_path=Path(args.state),
+        env_file=Path(args.env_file) if args.persist_env else None,
+        wait_login=args.wait_login,
+        open_login=args.open_login,
+        require_login=args.require_login,
+    )
+    print_json(result)
+    return 0 if result.get("ok") else 1
+
+
+def cmd_chrome_login(args: argparse.Namespace) -> int:
+    launched = launch_chrome_for_login(
+        port=args.port,
+        profile_dir=Path(args.profile_dir) if args.profile_dir else None,
+        chrome_path=args.chrome_path,
+    )
+    result = export_cookie_from_chrome(
+        cdp_urls=[launched["cdp_url"]],
+        state_path=Path(args.state),
+        env_file=Path(args.env_file) if args.persist_env else None,
+        wait_login=args.wait_login,
+        open_login=False,
+        require_login=True,
+    )
+    result["chrome"] = launched
+    print_json(result)
+    return 0 if result.get("ok") else 1
 
 
 def cmd_radar(args: argparse.Namespace) -> int:
@@ -211,6 +255,31 @@ def build_parser() -> argparse.ArgumentParser:
 
     backends = sub.add_parser("backends", help="Show available download backends")
     backends.set_defaults(func=cmd_backends)
+
+    cookie_status_parser = sub.add_parser("cookie-status", help="Show masked Bilibili cookie/login status")
+    cookie_status_parser.add_argument("--state", default=str(DEFAULT_COOKIE_STATE), help="Cookie state JSON path")
+    cookie_status_parser.add_argument("--validate", action=argparse.BooleanOptionalAction, default=True, help="Validate against Bilibili nav API")
+    cookie_status_parser.set_defaults(func=cmd_cookie_status)
+
+    cookie_chrome = sub.add_parser("cookie-from-chrome", help="Read Bilibili login cookies from a Chrome DevTools port")
+    cookie_chrome.add_argument("--cdp-url", action="append", default=[], help="Chrome DevTools HTTP URL, e.g. http://127.0.0.1:9222")
+    cookie_chrome.add_argument("--state", default=str(DEFAULT_COOKIE_STATE), help="Cookie state JSON path")
+    cookie_chrome.add_argument("--env-file", default=str(DEFAULT_ENV_FILE), help="Generated PowerShell env file")
+    cookie_chrome.add_argument("--wait-login", type=int, default=180, help="Seconds to wait for QR/login completion")
+    cookie_chrome.add_argument("--open-login", action=argparse.BooleanOptionalAction, default=True, help="Open Bilibili login page in Chrome")
+    cookie_chrome.add_argument("--require-login", action=argparse.BooleanOptionalAction, default=True, help="Require nav API to report isLogin=true")
+    cookie_chrome.add_argument("--persist-env", action=argparse.BooleanOptionalAction, default=True, help="Write .env.generated.ps1 with local cookie env")
+    cookie_chrome.set_defaults(func=cmd_cookie_from_chrome)
+
+    chrome_login = sub.add_parser("chrome-login", help="Launch reusable Chrome profile, wait for QR login, then persist Bilibili cookies")
+    chrome_login.add_argument("--port", type=int, default=9222, help="Chrome remote debugging port")
+    chrome_login.add_argument("--profile-dir", help="Reusable Chrome profile directory")
+    chrome_login.add_argument("--chrome-path", help="Chrome or Edge executable path")
+    chrome_login.add_argument("--state", default=str(DEFAULT_COOKIE_STATE), help="Cookie state JSON path")
+    chrome_login.add_argument("--env-file", default=str(DEFAULT_ENV_FILE), help="Generated PowerShell env file")
+    chrome_login.add_argument("--wait-login", type=int, default=180, help="Seconds to wait for QR/login completion")
+    chrome_login.add_argument("--persist-env", action=argparse.BooleanOptionalAction, default=True, help="Write .env.generated.ps1 with local cookie env")
+    chrome_login.set_defaults(func=cmd_chrome_login)
 
     radar = sub.add_parser("radar", help="Create ranking plus keyword radar report")
     radar.add_argument("--keyword", action="append", default=[], help="Keyword to search; can repeat")

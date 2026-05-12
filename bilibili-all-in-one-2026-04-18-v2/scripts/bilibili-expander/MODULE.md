@@ -1,6 +1,6 @@
 # Bilibili Expander Module
 
-本模块是 `bilibili-all-in-one` 的扩展工具箱，不是独立 Codex Skill。它把视频证据包、弹幕、关键帧、订阅监控、内容雷达、直播快照、直播弹幕监听、下载后端探测、转录修复和轻量工具服务统一到一个 CLI。
+本模块是 `bilibili-all-in-one` 的扩展工具箱，不是独立 Codex Skill。它把账号 Cookie 登录态复用、视频证据包、弹幕、关键帧、订阅监控、内容雷达、直播快照、直播弹幕监听、下载后端探测、转录修复和轻量工具服务统一到一个 CLI。
 
 ## 入口
 
@@ -17,6 +17,9 @@ python $Expander --help
 - `subtitle`：抓取官方字幕 JSON。
 - `download`：按 `BBDown -> yutto -> yt-dlp -> python -m yt_dlp` 顺序自动选择下载后端。
 - `backends`：显示当前可用下载后端。
+- `chrome-login`：启动可复用 Chrome profile，扫码登录后从 DevTools 端口保存 B站 Cookie。
+- `cookie-from-chrome`：连接已有 Chrome DevTools 端口，读取并持久化 B站登录态。
+- `cookie-status`：脱敏展示本地 Cookie 状态，并可用 B站 nav API 验证是否登录。
 - `radar`：生成排行榜 + 关键词搜索内容雷达。
 - `subscribe-check`：按配置检查 UP 主新投稿，生成增量报告并维护 state。
 - `live-snapshot`：获取直播间当前标题、状态、分区、在线人数等快照。
@@ -33,6 +36,15 @@ python $Expander evidence-pack --bvid BVxxxx --output E:\MorenAnzhuangLujing\Hua
 
 # 下载并抽关键帧
 python $Expander evidence-pack --bvid BVxxxx --download --backend auto --every-seconds 30 --frame-limit 24
+
+# 扫码登录并保存账号 Cookie
+python $Expander chrome-login --port 9222 --wait-login 180
+
+# 复用已有 Chrome DevTools 端口
+python $Expander cookie-from-chrome --cdp-url http://127.0.0.1:9222 --wait-login 30
+
+# 脱敏查看登录态
+python $Expander cookie-status
 
 # 内容雷达
 python $Expander radar --keyword "AI 大模型" --keyword "OpenAI" --limit 10 --output "$env:TEMP\bilibili-radar.md"
@@ -75,3 +87,13 @@ python $Expander live-danmaku --room-id 6 --seconds 60 --max-messages 200 --outp
 ```json
 {"id":"1","ok":true,"result":{}}
 ```
+
+## Cookie 状态文件
+
+默认路径：
+
+- `.runtime\bilibili-cookie-state.json`
+- `.env.generated.ps1`
+- `.runtime\chrome-profile`
+
+这些文件含本地登录态或可复用浏览器资料，必须保持未跟踪。CLI 输出只返回脱敏 Cookie；如果需要调试真实值，直接在本机读取状态文件。

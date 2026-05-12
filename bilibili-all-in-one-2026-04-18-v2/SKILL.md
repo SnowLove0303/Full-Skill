@@ -1,6 +1,6 @@
 ---
 name: bilibili-all-in-one
-description: B站唯一入口技能，整合原 bilibili-news、bilibili-opencli、bilibili-monitor 及其脚本模块；支持 AI早报、站内搜索、视频下载转录、Obsidian笔记、热门日报、邮件推送、视频证据包、弹幕分析、关键帧、订阅监控、内容雷达、直播快照、直播弹幕监听、合集计划、转录修复和轻量工具服务。触发词：B站早报/AI日报/热门监控/邮件推送/bilibili搜索/bilibili监控/bilibili视频/证据包/弹幕/直播/UP主订阅
+description: B站唯一入口技能，整合原 bilibili-news、bilibili-opencli、bilibili-monitor 及其脚本模块；支持 AI早报、站内搜索、视频下载转录、Obsidian笔记、热门日报、邮件推送、账号登录态复用、视频证据包、弹幕分析、关键帧、订阅监控、内容雷达、直播快照、直播弹幕监听、合集计划、转录修复和轻量工具服务。触发词：B站早报/AI日报/热门监控/邮件推送/bilibili搜索/bilibili监控/bilibili视频/B站Cookie/证据包/弹幕/直播/UP主订阅
 triggers:
   - B站早报
   - AI早报
@@ -19,6 +19,8 @@ triggers:
   - UP主订阅
   - B站内容雷达
   - B站直播
+  - B站Cookie
+  - B站账号登录
   - 转录修复
 links:
   - [[quick-ref]]
@@ -26,7 +28,7 @@ links:
 
 # Bilibili All-in-One
 
-> 多功能合一：B站早报生成 / 热门日报邮件推送 / 关键词搜索下载 / 视频证据包 / 弹幕分析 / 订阅监控 / 内容雷达 / 直播快照与实时弹幕
+> 多功能合一：B站早报生成 / 热门日报邮件推送 / 关键词搜索下载 / 账号登录态复用 / 视频证据包 / 弹幕分析 / 订阅监控 / 内容雷达 / 直播快照与实时弹幕
 > 本 Skill 是 bilibili-news + bilibili-opencli + bilibili-monitor + video-news-workflow 的唯一入口整合版。
 > **所有脚本已打包在本 skill 目录的 `scripts/` 子目录下，完全自包含。**
 
@@ -35,7 +37,7 @@ links:
 - Codex 只应把本文件识别为 Bilibili 技能入口。
 - 原 `bilibili-opencli` 和 `bilibili-monitor` 子技能已降级为脚本模块文档：`scripts/bilibili-opencli/MODULE.md`、`scripts/bilibili-hot-monitor/MODULE.md`。
 - 原 `bilibili-news`、`bilibili-opencli`、`bilibili-hot-monitor`、`video-news-workflow` 脚本全部保留在 `scripts/` 下，由本技能统一调度。
-- 新增扩展模块 `scripts/bilibili-expander`，用于证据包、弹幕、字幕、下载后端探测、内容雷达、UP 主订阅、直播快照、直播弹幕监听、合集计划、转录修复和轻量工具服务。
+- 新增扩展模块 `scripts/bilibili-expander`，用于账号 Cookie 登录态复用、证据包、弹幕、字幕、下载后端探测、内容雷达、UP 主订阅、直播快照、直播弹幕监听、合集计划、转录修复和轻量工具服务。
 - 遇到 B站、Bilibili、视频日报、AI早报、UP主视频、转录、Obsidian笔记、热门视频邮件、弹幕、证据包、直播、订阅监控等需求时，先读本文件，再按“快速选择指南”选内部模块。
 
 ---
@@ -152,6 +154,8 @@ bilibili-all-in-one/
 │   │   ├── MODULE.md
 │   │   ├── cli.py              # 扩展统一入口
 │   │   ├── core.py
+│   │   ├── chrome_cookie.py    # Chrome DevTools 登录态/Cookie 桥接
+│   │   ├── chrome_login.ps1    # Windows 扫码登录包装脚本
 │   │   └── subscriptions.example.json
 │   └── video-news-workflow/     # 跨 skill 共享工具
 │       ├── opencli_bilibili.py
@@ -256,11 +260,32 @@ python "$Skill\scripts\bilibili-opencli\scripts\run.py" `
 
 **首次配置（分步询问）：**
 
-**Step 1：获取B站Cookies**
+**Step 1：获取或复用 B站 Cookies**
+
+优先用技能内置的 Chrome 登录态桥接，不再手动从 DevTools 复制 Cookie。它会启动一个可复用的 Chrome 用户目录，打开 B 站登录页，扫码登录后通过本地 DevTools 端口读取 `.bilibili.com` Cookie，保存到未跟踪的 `.runtime\bilibili-cookie-state.json`，并写入本地 `.env.generated.ps1`：
+
+```powershell
+$Skill = "F:\AIAPP\Codex\.codex\skills\bilibili-all-in-one-2026-04-18-v2"
+$Py = "E:\MorenAnzhuangLujing\Huangjingdajian\python-venvs\bilibili-all-in-one\Scripts\python.exe"
+$Expander = "$Skill\scripts\bilibili-expander\cli.py"
+
+# 首次：打开 Chrome，扫码登录，等待并保存 Cookie
+& $Py $Expander chrome-login --port 9222 --wait-login 180
+
+# 后续：已有 Chrome 远程调试端口时，直接复用登录态
+& $Py $Expander cookie-from-chrome --cdp-url http://127.0.0.1:9222 --wait-login 30
+
+# 查看状态；输出只展示脱敏 Cookie
+& $Py $Expander cookie-status
 ```
-登录B站 → F12 → Network → 刷新页面 → 点击 www.bilibili.com 请求
-→ Request Headers → 复制 Cookie 字段完整值
+
+也可以直接运行 PowerShell 包装脚本：
+
+```powershell
+.\scripts\bilibili-expander\chrome_login.ps1 -Port 9222 -WaitSeconds 180
 ```
+
+若你已经手动拿到 Cookie，也可设置 `BILIBILI_COOKIE`。脚本优先读取环境变量，其次读取 `.runtime\bilibili-cookie-state.json`。
 
 **Step 2：选择AI模型**
 ```
@@ -354,6 +379,29 @@ $Expander = "$Skill\scripts\bilibili-expander\cli.py"
 python $Expander --help
 ```
 
+### 账号 Cookie / 登录态复用
+
+需要登录态的场景包括部分高清视频下载、受风控接口、热门日报和需要账号权限的视频内容。扩展模块提供三种入口：
+
+```powershell
+# 启动可复用 Chrome Profile，扫码登录后自动保存 Cookie
+python $Expander chrome-login --port 9222 --wait-login 180
+
+# 连接已有 Chrome DevTools 端口，读取当前登录态
+python $Expander cookie-from-chrome --cdp-url http://127.0.0.1:9222 --wait-login 30
+
+# 查看是否有可用 Cookie；默认会调用 B 站 nav API 验证 isLogin
+python $Expander cookie-status
+```
+
+默认保存位置：
+
+- Cookie state: `.runtime\bilibili-cookie-state.json`
+- PowerShell env: `.env.generated.ps1`
+- Chrome profile: `.runtime\chrome-profile`
+
+这些路径已按仓库规则忽略，不应提交。`http_json`、`http_bytes`、`download`、`evidence-pack --download` 会自动优先读取 `BILIBILI_COOKIE`，否则读取 Cookie state；下载尝试报告中的 Cookie 会被脱敏。
+
 ### 视频证据包
 
 用于把单个视频整理成可复核资料包，适合事实核查、教程复盘、剪辑前分析和研究笔记。
@@ -408,7 +456,7 @@ python $Expander backends
 python $Expander download --bvid BVxxxx --backend auto --output "$env:TEMP\bilibili-downloads"
 ```
 
-当一个后端不可用或失败时，可切换到另一个后端。涉及番剧、合集、课程时，优先考虑 BBDown 或 yutto；普通单视频可用 yt-dlp。
+当一个后端不可用或失败时，可切换到另一个后端。涉及番剧、合集、课程时，优先考虑 BBDown 或 yutto；普通单视频可用 yt-dlp。若已有登录态，下载命令会自动把 Cookie 传给 BBDown、yutto 或 yt-dlp，并在日志中脱敏。
 
 ### 内容雷达
 
@@ -529,6 +577,8 @@ python $Expander mcp-stdio
 | `scripts/bilibili-hot-monitor/send_email.py` | 邮件推送 | python 直接调用 |
 | `scripts/bilibili-hot-monitor/bilibili_api.py` | B站API/字幕 | import 调用 |
 | `scripts/bilibili-expander/cli.py` | 证据包/弹幕/雷达/订阅/直播监听/转录修复 | `python cli.py <command>` |
+| `scripts/bilibili-expander/chrome_cookie.py` | Chrome登录态/Cookie桥接 | `python cli.py chrome-login` |
+| `scripts/bilibili-expander/chrome_login.ps1` | Windows扫码登录包装脚本 | `.\scripts\bilibili-expander\chrome_login.ps1` |
 
 ---
 
@@ -537,8 +587,9 @@ python $Expander mcp-stdio
 1. **PowerShell中文乱码**：控制台中文显示乱码是PowerShell问题，不影响文件写入，Obsidian笔记正常。
 2. **Whisper medium模型**：需要网络下载，当前环境只有small可用。如需medium，设置 `ASR_ENGINE=funasr` 强制FunASR。
 3. **无字幕视频**：热门日报AI总结依赖字幕，无字幕视频跳过总结。
-4. **Cookies时效**：B站Cookies会过期，热门日报失效时需重新获取。
+4. **Cookies时效**：B站Cookies会过期，热门日报或下载失败时先跑 `cookie-status`；失效后用 `chrome-login` 重新扫码。
 5. **执行超时**：热门日报完整执行10-15分钟，命令超时设900秒以上。
+6. **凭证安全**：`.runtime\bilibili-cookie-state.json` 和 `.env.generated.ps1` 含明文 Cookie，仅保存在本机且已被 `.gitignore` 排除；不要贴到聊天或提交仓库。
 
 ---
 
@@ -550,6 +601,7 @@ python $Expander mcp-stdio
 | 想做B站热门视频日报发邮件 | 功能二：热门日报 |
 | 想搜某个关键词相关视频并下载 | 功能三：关键词搜索 |
 | 想批量处理多个UP主的视频 | 功能一 + `--parallel 2` |
+| 想扫码登录并复用 B站 Cookie | 扩展功能：`chrome-login` / `cookie-from-chrome` / `cookie-status` |
 | 想给某个视频留证据、字幕、弹幕、关键帧 | 扩展功能：`evidence-pack` |
 | 想分析弹幕或导出 ASS | 扩展功能：`danmaku` / `evidence-pack` |
 | 想每天检查一批 UP 主新投稿 | 扩展功能：`subscribe-check` |

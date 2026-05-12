@@ -27,6 +27,9 @@ $checks = [ordered]@{
     BBDown = [bool]((Get-Command BBDown -ErrorAction SilentlyContinue) -or (Get-Command BBDown.exe -ErrorAction SilentlyContinue) -or (Get-Command bbdown -ErrorAction SilentlyContinue))
     Yutto = [bool](Get-Command yutto -ErrorAction SilentlyContinue)
     YtDlpCli = [bool]((Get-Command yt-dlp -ErrorAction SilentlyContinue) -or (Get-Command yt-dlp.exe -ErrorAction SilentlyContinue))
+    Chrome = [bool]((Get-Command chrome -ErrorAction SilentlyContinue) -or (Get-Command chrome.exe -ErrorAction SilentlyContinue) -or (Get-Command msedge -ErrorAction SilentlyContinue) -or (Get-Command msedge.exe -ErrorAction SilentlyContinue))
+    CookieState = (Test-Path (Join-Path $SkillRoot ".runtime\bilibili-cookie-state.json"))
+    CookieEnv = [bool]$env:BILIBILI_COOKIE
     OutputDir = (Test-Path (Join-Path $InstallRoot "downloads\bilibili"))
     WhisperDownloadRoot = (Test-Path (Join-Path $InstallRoot "tool-caches\huggingface\bilibili-all-in-one\models"))
 }
@@ -45,6 +48,9 @@ for name in ["yt_dlp", "imageio_ffmpeg", "faster_whisper"]:
 
     Write-Host "[Info] Expander download backends"
     & $VenvPython (Join-Path $SkillRoot "scripts\bilibili-expander\cli.py") backends
+
+    Write-Host "[Info] Bilibili cookie status"
+    & $VenvPython (Join-Path $SkillRoot "scripts\bilibili-expander\cli.py") cookie-status --no-validate
 }
 
 if ($OpencliCmd -and (Test-Path $OpencliCmd)) {

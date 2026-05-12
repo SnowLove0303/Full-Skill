@@ -31,12 +31,15 @@ Write-Host "[Smoke] Python syntax"
     (Join-Path $SkillRoot "scripts\bilibili-opencli\scripts\download.py") `
     (Join-Path $SkillRoot "scripts\bilibili-opencli\scripts\formatter.py") `
     (Join-Path $SkillRoot "scripts\bilibili-opencli\scripts\transcribe.py") `
+    (Join-Path $SkillRoot "scripts\bilibili-expander\chrome_cookie.py") `
     (Join-Path $SkillRoot "scripts\bilibili-expander\core.py") `
     (Join-Path $SkillRoot "scripts\bilibili-expander\cli.py")
 
 Write-Host "[Smoke] Expander CLI backend probe"
 & $PythonExe (Join-Path $SkillRoot "scripts\bilibili-expander\cli.py") backends
 & $PythonExe (Join-Path $SkillRoot "scripts\bilibili-expander\cli.py") live-danmaku --help | Out-Null
+& $PythonExe (Join-Path $SkillRoot "scripts\bilibili-expander\cli.py") cookie-status --no-validate | Out-Null
+& $PythonExe (Join-Path $SkillRoot "scripts\bilibili-expander\cli.py") cookie-from-chrome --help | Out-Null
 
 Write-Host "[Smoke] Search dry-run: $Query"
 $SavedOpencli = $env:OPENCLI_CMD
