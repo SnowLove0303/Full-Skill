@@ -6,6 +6,7 @@ Reusable skill collection for Codex/OpenClaw agents. Current focus:
 
 - `bilibili-all-in-one-2026-04-18-v2`: Bilibili search/download/transcribe/note workflow.
 - `bilibili-all-in-one-2026-04-18-v2/scripts/juya-daily`: strict Juya daily-video full flow, built for OpenClaw scheduled agents and local verification.
+- `zhihu-search-info`: Zhihu search and evidence capture through a logged-in ChromeDidy/CDP browser session.
 
 ## V3 Highlights
 
@@ -14,6 +15,7 @@ Reusable skill collection for Codex/OpenClaw agents. Current focus:
 - Default runtime output stays under `F:\AIAPP\Xiangmu\MutiAgent\runtime\bilibili-fullflow` on this machine; override with `BILIBILI_FULLFLOW_RUNTIME_ROOT`.
 - Notion publishing updates an existing page with the same BVID/title when found; otherwise it creates a new daily page.
 - No token or cookie is stored in this repo. Use environment variables or local OpenClaw workspace config.
+- Zhihu retrieval uses the active Chrome login profile through CDP and keeps cookies inside the browser profile.
 
 ## Quick Start
 
@@ -41,3 +43,4 @@ Docs:
 - [Juya daily V3 usage](bilibili-all-in-one-2026-04-18-v2/docs/JUYA_DAILY_V3.md)
 - [OpenClaw agent prompt](bilibili-all-in-one-2026-04-18-v2/docs/OPENCLAW_AGENT_PROMPT.md)
 - [New device reuse guide](bilibili-all-in-one-2026-04-18-v2/docs/REUSE_ON_NEW_DEVICE.md)
+- [Zhihu skill](zhihu-search-info/SKILL.md)

@@ -1,0 +1,7 @@
+interface:
+  display_name: "Zhihu Search Info"
+  short_description: "Search Zhihu and extract questions, answers, hot lists, recommendations, and articles through a logged-in Chrome CDP session."
+  brand_color: "#0F88EB"
+  default_prompt: "Use $zhihu-search-info to search Zhihu through the existing logged-in Chrome session and summarize sources with URLs."
+policy:
+  allow_implicit_invocation: true
