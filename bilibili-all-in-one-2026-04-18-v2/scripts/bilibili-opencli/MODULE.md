@@ -125,7 +125,7 @@ summary = generate_daily_summary(videos, temp_dir=OUTPUT, vault_path=VAULT)
 | `--date` | 日期过滤（格式 YYYY-MM-DD） |
 | `--output` | 下载目录（默认 `F:\工作区间\ai_news_temp`） |
 | `--vault` | Obsidian 路径（默认 `C:\Users\chenz\Documents\Obsidian Vault\实时快报` |
-| `--parallel` | 并行下载/转录数（默认 1） |
+| `--parallel` | 并行下载/转录数（默认 3） |
 | `--dry-run` | 只打印，不下载/转录 |
 | `--skip-transcribe` | 跳过转录 |
 | `--skip-download` | 跳过下载 |

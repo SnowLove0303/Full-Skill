@@ -42,6 +42,34 @@ links:
 
 ---
 
+## 执行原则
+
+1. 先定位视频，再处理内容。需要找“某一天/某一期/某个 UP 主”的视频时，优先用 `--find-video` 或 `--uid` dry-run 验证标题、作者、日期和 BV；不要把搜索页、推荐页或播放页 HTML 当成转录来源。
+2. 需要账号态时，优先复用 `chrome-login` / `cookie-from-chrome` 保存的本地 Cookie state；不要让用户手动复制明文 Cookie，除非自动桥接失败。
+3. 生成日报、Notion 页面、Open Notebook 内容前，必须确认来源文本是字幕、ASR 转录或人工整理后的正文；如果只有 URL、页面导航、推荐视频、报错占位或元数据，应判定为未完成。
+4. 自动化产物验收至少检查：标题不是 `Processing...`，正文不是乱码，来源不是 `URL Source:` 页面抓取，转录长度与视频时长大致匹配，Open Notebook 入库时 `embedded_chunks` 大于 0。
+5. 涉及定时任务或外部 agent 时，Codex 负责派发和验收；被调 agent 必须回传视频清单、BV、输出路径、失败原因和可复核证据。
+
+---
+
+## 快速选择指南
+
+| 需求 | 首选入口 | 验收点 |
+|------|---------|--------|
+| 找指定日期/标题的视频 | `run.py --find-video ... --strict-find --dry-run` | 命中作者、标题关键词、日期、BV |
+| 处理已知 BV | `run.py --bvid BVxxxx` | 成功下载/转录并生成笔记 |
+| UP 主日报/早报 | `run.py --uid <uid> --limit N` | 输出 Obsidian 笔记，正文含转录摘要 |
+| 热门日报邮件 | `bilibili-hot-monitor/generate_report.py` + `send_email.py` | 报告生成、邮件发送成功 |
+| 账号登录态 | `bilibili-expander/cli.py chrome-login` | `cookie-status` 返回可用登录态 |
+| 视频证据包 | `bilibili-expander/cli.py evidence-pack` | 元数据、字幕、弹幕、关键帧或 smoke report 存在 |
+| 弹幕/字幕单独导出 | `danmaku` / `subtitle` | JSON 文件存在且条目数合理 |
+| 内容雷达 | `radar` | 排行榜和关键词结果已写入 Markdown |
+| UP 主订阅监控 | `subscribe-check` | state 更新，报告列出新增/无新增 |
+| 直播快照/弹幕 | `live-snapshot` / `live-danmaku` | JSON 或 JSONL 输出可解析 |
+| 转录术语修复 | `polish-transcript` | 输出文件替换术语且保留正文 |
+
+---
+
 ## 快速安装和验证
 
 优先使用打包脚本，默认把依赖、工具、缓存和下载目录分别放到 `E:\MorenAnzhuangLujing\Huangjingdajian` 下的独立文件夹：
@@ -237,7 +265,7 @@ python "$Skill\scripts\bilibili-opencli\scripts\run.py" `
 | `--date` | 日期过滤 YYYY-MM-DD | 当日 |
 | `--output` | 下载目录 | `BILIBILI_OUTPUT_DIR` 或 `~/bilibili-ai-news` |
 | `--vault` | Obsidian 笔记目录 | `BILIBILI_VAULT_DIR` 或 `~/Documents/Obsidian Vault/实时快报` |
-| `--parallel` | 并行下载/转录数 | 1 |
+| `--parallel` | 并行下载/转录数 | 3 |
 | `--dry-run` | 只打印，不下载/转录 | - |
 | `--skip-transcribe` | 跳过转录 | - |
 | `--skip-download` | 跳过下载 | - |
@@ -592,23 +620,6 @@ python $Expander mcp-stdio
 6. **凭证安全**：`.runtime\bilibili-cookie-state.json` 和 `.env.generated.ps1` 含明文 Cookie，仅保存在本机且已被 `.gitignore` 排除；不要贴到聊天或提交仓库。
 
 ---
-
-## 快速选择指南
-
-| 需求 | 用哪个功能 |
-|------|---------|
-| 想把某个UP主最新视频做成Obsidian笔记 | 功能一：B站早报 |
-| 想做B站热门视频日报发邮件 | 功能二：热门日报 |
-| 想搜某个关键词相关视频并下载 | 功能三：关键词搜索 |
-| 想批量处理多个UP主的视频 | 功能一 + `--parallel 2` |
-| 想扫码登录并复用 B站 Cookie | 扩展功能：`chrome-login` / `cookie-from-chrome` / `cookie-status` |
-| 想给某个视频留证据、字幕、弹幕、关键帧 | 扩展功能：`evidence-pack` |
-| 想分析弹幕或导出 ASS | 扩展功能：`danmaku` / `evidence-pack` |
-| 想每天检查一批 UP 主新投稿 | 扩展功能：`subscribe-check` |
-| 想看 B 站热点和关键词趋势 | 扩展功能：`radar` |
-| 想查直播间当前状态或保存直播弹幕 | 扩展功能：`live-snapshot` / `live-danmaku` |
-| 想批量规划合集/课程处理 | 扩展功能：`collection-plan` |
-| 想修正转录术语 | 扩展功能：`polish-transcript` |
 
 ## 维护约定
 

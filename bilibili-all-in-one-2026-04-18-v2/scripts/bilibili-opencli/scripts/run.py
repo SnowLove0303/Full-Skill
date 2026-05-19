@@ -44,6 +44,7 @@ def parse_args():
     behavior.add_argument("--skip-transcribe", action="store_true", help="Skip transcription.")
     behavior.add_argument("--parallel", type=int, default=3, help="Download/transcription parallelism.")
     behavior.add_argument("--engine", type=str, default="whisper", choices=["whisper", "funasr", "auto"], help="ASR engine.")
+    behavior.add_argument("--force-transcribe", action="store_true", help="Overwrite existing transcript text files.")
     behavior.add_argument("--keep-cache", action="store_true", help="Keep downloaded media/transcripts after notes are generated.")
 
     return parser.parse_args()
@@ -166,6 +167,7 @@ def main():
             bvids_to_transcribe,
             output_dir=args.output,
             engine=args.engine,
+            skip_existing=not args.force_transcribe,
             parallel=args.parallel,
         )
         transcribed = [
